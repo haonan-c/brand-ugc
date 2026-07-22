@@ -1,214 +1,211 @@
-# brand-ugc：品牌 UGC 生成
+<p align="right">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-面向品牌生成 UGC 视频分镜与生产级提示词。本教程以 Windows 为主，也适用于
-macOS 和 Linux。用户不需要配置模型，
-只需要一个 EvoLink API Key、对标视频和产品图。
+<p align="center">
+  <img src="assets/brand-ugc-workflow.png" alt="Reference video and product assets becoming a 12-panel storyboard and production prompt" width="100%">
+</p>
 
-流程最终输出：
+# brand-ugc
 
-- 最终 12 宫格分镜图
-- 可直接使用的 15 秒 Seedance 总提示词
-- 12 条逐镜头运动指令
-- 每一步结构化过程文件和 QA 报告
+Turn a reference UGC video and product assets into a brand-specific 12-panel
+storyboard and a production-ready 15-second Seedance prompt.
 
-本流程不直接生成 MP4。用户把最终分镜图和提示词放到 Seedance 生成视频。
+`brand-ugc` is a Codex skill for brand marketers and UGC creators. It analyzes a
+reference video, adapts the creative to a new product and optional person, generates
+and validates a final storyboard, then writes the master video prompt and 12
+shot-level motion instructions.
 
-## 第一步：获取 EvoLink API Key
+> [!IMPORTANT]
+> The current version does **not** render the final MP4. It prepares the storyboard
+> and prompts you can take into Seedance.
 
-打开：
+## Quickstart
 
-[EvoLink API Key 管理页](https://evolink.ai/dashboard/keys)
+### 1. Check the prerequisites
 
-注意：
+- [Codex](https://openai.com/codex/)
+- Node.js and `npx` — required only for the one-command installer
+- Python 3.10 or newer
+- FFmpeg and FFprobe
+- An [EvoLink API Key](https://evolink.ai/dashboard/keys)
 
-- 只需要一个 EvoLink API Key。
-- 同一个 Key 用于视频/音频/图片理解、脚本、视觉 QA 和生图。
-- 不要把 Key 发到聊天、飞书或截图中。
-- Key 只保存在本地环境变量或 txt 文件。
-- 原服务商的 Key 不能使用。
+You do not need to configure any models manually.
 
-## 第二步：安装两个 Skill
+### 2. Install both skills globally
 
-下载并解压：
+Run this command once:
 
-```text
-brand-ugc.zip
+```bash
+npx -y skills@latest add haonan-c/brand-ugc --skill brand-ugc imagegen-api --agent codex --global --yes
 ```
 
-把以下两个文件夹复制到 Codex Skills 目录：
+This installs both required skills:
 
-```text
-brand-ugc
-imagegen-api
+- `brand-ugc` — the seven-stage UGC workflow
+- `imagegen-api` — the EvoLink image-generation adapter used by the workflow
+
+### 3. Configure the EvoLink API Key
+
+The recommended method is the `EVOLINK_API_KEY` environment variable.
+
+macOS/Linux, for the current shell:
+
+```bash
+export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
 ```
 
-Windows 默认位置：
+Add the same export to the shell profile you use to launch Codex if you want it to
+persist.
 
-```text
-C:\Users\<用户名>\.codex\skills\brand-ugc
-C:\Users\<用户名>\.codex\skills\imagegen-api
+Windows PowerShell, for the current user:
+
+```powershell
+[Environment]::SetEnvironmentVariable("EVOLINK_API_KEY", "<YOUR_EVOLINK_KEY>", "User")
 ```
 
-macOS/Linux 默认位置：
+Restart Codex after setting a persistent environment variable.
+
+As a fallback, save the key by itself in this local file:
 
 ```text
-~/.codex/skills/brand-ugc
-~/.codex/skills/imagegen-api
+Windows:      %USERPROFILE%\.codex\skills\imagegen-api\secrets\api_key.txt
+macOS/Linux:  ~/.codex/skills/imagegen-api/secrets/api_key.txt
 ```
 
-检查本机已有：
+Never paste a real key into chat, screenshots, logs, or Git.
 
-- Python 3.10 或更高版本
-- FFmpeg
-- FFprobe
+### 4. Ask Codex to create the storyboard
 
-本版本的十二宫格拼接直接使用 FFmpeg，不需要额外安装 Pillow。
-
-## 第三步：保存 API Key
-
-推荐设置环境变量：
+Upload a reference video and product image, then send:
 
 ```text
-EVOLINK_API_KEY
+Use $brand-ugc to create a 15-second brand UGC storyboard.
+
+I uploaded:
+1. A reference video
+2. A product image
+3. A person reference image (optional)
+4. Copy or a copy file (optional)
+
+Product name:
+<name>
+
+Verified product notes:
+- <facts visible in the product image or supplied by me>
+
+Use 2K output. Do not add unsupported claims, subtitles, watermarks, or platform UI.
+Return the final 12-panel storyboard and the complete Seedance master prompt.
 ```
 
-也可以把 Key 写入：
+## Inputs and outputs
+
+| Type | Item | Required |
+| --- | --- | --- |
+| Input | Reference UGC video, usually around 15 seconds | Yes |
+| Input | Product image or product contact sheet | Yes |
+| Input | Person reference image | No |
+| Input | Copy, product facts, and constraints | No, but recommended |
+| Output | Final 2K 12-panel storyboard | Yes |
+| Output | 15-second Seedance master prompt | Yes |
+| Output | 12 shot-level motion instructions | Yes |
+| Output | Structured JSON, progress state, and QA reports | Yes |
+
+Outputs are written locally under `runs/brand-ugc/<run-name>/`. Runtime outputs and
+delivery bundles are intentionally ignored by Git.
+
+## How it works
+
+The workflow runs seven controlled stages:
+
+1. **Analyze the reference video** — create a local muted proxy of at most 720p and,
+   when present, a mono audio track for multimodal analysis.
+2. **Build the reference board** — extract 12 frames from the original video locally.
+3. **Rewrite the shot script** — adapt the creative to the supplied product, person,
+   copy, and verified facts.
+4. **Write 12 image prompts** — lock composition, product appearance, character, and
+   continuity across shots.
+5. **Generate the template storyboard** — render one 2K board and run visual QA.
+6. **Generate the final storyboard** — integrate the product and optional person,
+   then run visual QA again.
+7. **Write the video prompt** — produce one Seedance master prompt plus 12 detailed
+   motion instructions.
+
+Every structured stage is validated against JSON Schema. Schema repair and image
+regeneration are each limited to one retry.
+
+## Privacy, cost, and quality safeguards
+
+- The original reference video stays local. Only a derived muted analysis proxy and
+  optional mono audio track are sent for analysis.
+- Product and optional person images are sent to EvoLink only when required by the
+  generation workflow.
+- Logs must not contain API keys, authorization headers, Base64 payloads, or temporary
+  resource URLs.
+- The workflow checks EvoLink balance before paid generation.
+- A run is capped at 14 model business requests.
+- `2K` is the default. The workflow never silently downgrades to `1K`.
+- Missing product facts remain unverified; the workflow must not invent claims.
+- If an image fails QA twice, the run stops and preserves the report instead of
+  passing a failed asset downstream.
+
+## Manual installation
+
+Use this fallback if Node.js is unavailable:
+
+1. Download the repository from
+   [GitHub](https://github.com/haonan-c/brand-ugc/archive/refs/heads/main.zip).
+2. Extract the archive.
+3. Copy both `brand-ugc` and `imagegen-api` into your Codex skills directory.
 
 ```text
-C:\Users\<用户名>\.codex\skills\imagegen-api\secrets\api_key.txt
+Windows:      %USERPROFILE%\.codex\skills\
+macOS/Linux:  ~/.codex/skills/
 ```
 
-macOS/Linux 对应：
+Restart Codex after copying the folders.
+
+## Advanced CLI usage
+
+The conversational Codex workflow is recommended. For direct pipeline control:
+
+```bash
+python ~/.codex/skills/brand-ugc/scripts/run_public_pipeline.py \
+  --run-name "my-product-ugc" \
+  --video "/absolute/path/reference.mp4" \
+  --product-image "/absolute/path/product.png" \
+  --person-image "/absolute/path/person.jpg" \
+  --copy-file "/absolute/path/copy.txt" \
+  --product-info "Verified product facts and constraints" \
+  --resolution "2K"
+```
+
+Omit optional arguments when you do not have those inputs. If a run is interrupted,
+repeat the same command with `--resume`. Existing task IDs are polled rather than
+submitted again.
+
+## Development
+
+Run the test suite from the repository root:
+
+```bash
+PYTHONPATH=. uv run --with pytest pytest -q
+```
+
+Repository layout:
 
 ```text
-~/.codex/skills/imagegen-api/secrets/api_key.txt
+brand-ugc/       Main workflow skill
+imagegen-api/    EvoLink image-generation adapter
+tests/           Contract, state, media, and offline end-to-end tests
+test-assets/     Licensed or source-documented test inputs
+docs/            API compatibility notes
 ```
 
-为了兼容旧安装，程序仍会读取环境变量名 `IMAGEGEN_API_KEY`，但变量内容必须是
-EvoLink Key。
+## License
 
-不要在聊天里粘贴真实 Key。
+The original project code is available under the [MIT License](LICENSE).
 
-## 第四步：重启 Codex
-
-关闭并重新打开 Codex，让它识别新安装的 Skill。
-
-## 第五步：准备素材
-
-必须：
-
-- 一个 15 秒左右的对标视频
-- 一张产品图或产品多宫格图
-
-可选：
-
-- 人物参考图
-- 文案 txt
-- 产品名称、可验证卖点和限制
-
-人物图未提供时，流程不会复制对标视频中的可识别真人；需要人物的镜头会使用
-非真实虚构演员。
-
-## 第六步：发给 Codex
-
-上传素材后发送：
-
-```text
-请使用 brand-ugc 运行一个 15 秒品牌 UGC 视频案例。
-
-我已上传：
-1. 对标视频
-2. 产品图
-3. 人物图（如果有）
-4. 文案（如果有）
-
-产品名称：
-这里填写产品名
-
-产品备注：
-- 只使用我提供的事实和产品图中直接可见的内容
-- 缺少的信息标记“需要确认”
-- 不要字幕、水印、平台 UI
-- 有人物图时统一使用参考人物
-
-请从视频解析开始完整执行，默认生成 2K 图片。
-最后直接在聊天中输出最终十二宫格图和完整 Seedance 总提示词。
-```
-
-流程会依次显示：
-
-1. `视频解析完成`
-2. `12宫格参考图完成`
-3. `新分镜脚本完成`
-4. `12分镜提示词完成`
-5. `第一步模板图完成`
-6. `最终分镜图完成`
-7. `视频提示词完成`
-
-## 中断后继续
-
-同名任务不会自动覆盖，以避免重复计费。如果运行中断，使用原命令并添加：
-
-```text
---resume
-```
-
-程序会：
-
-- 跳过已完成阶段
-- 继续未完成阶段
-- 已有 EvoLink 图片任务 ID 时只查询状态，不重复提交
-
-如果素材发生变化，请换一个新的 `--run-name`，不要在旧任务上恢复。
-
-## 输出位置
-
-默认保存在：
-
-```text
-runs/brand-ugc/<任务名>/
-```
-
-重点文件：
-
-```text
-progress.json
-进度.txt
-stage_summary.json
-qa/QA报告.json
-outputs/12镜头解析.json
-outputs/12镜头解析.md
-collages/12宫格参考图.jpg
-outputs/新产品-12分镜脚本.json
-outputs/新产品-12分镜脚本.md
-outputs/1-12分镜提示词.json
-outputs/1-12分镜提示词.md
-images/step1_template*/image-01.png
-images/final_storyboard*/image-01.png
-outputs/视频提示词1-12.json
-outputs/视频提示词1-12.txt
-```
-
-JSON 是流程内部唯一数据源；Markdown 和 TXT 是给人阅读的展示版本。
-
-## 常见问题
-
-### 原视频会上传吗？
-
-不会。程序在本地生成最高 720p 的无声分析代理和单声道音轨，只发送这两个派生
-文件。原视频只用于本地抽取十二帧。
-
-### 2K 失败会自动改成 1K 吗？
-
-不会。默认 2K 失败时会明确停止。只有用户主动使用 `--resolution 1K` 才生成
-1K，并显示质量警告。
-
-### 图片 QA 失败怎么办？
-
-每个图片阶段最多自动纠错生成一次，并再次 QA。第二次仍失败时停止，同时保留
-失败图片和 QA 报告，不把不合格图片传给下游。
-
-### 会生成几个候选图？
-
-每个图片阶段只生成一张，不批量生成候选。单次运行最多使用配置中的 14 次模型
-业务请求，达到上限会停止以避免继续计费。
+Adapted workflow ideas and controlled vocabularies retain their upstream licenses.
+See [`brand-ugc/THIRD_PARTY_NOTICES.md`](brand-ugc/THIRD_PARTY_NOTICES.md) and
+[`brand-ugc/licenses/`](brand-ugc/licenses/) for details.
