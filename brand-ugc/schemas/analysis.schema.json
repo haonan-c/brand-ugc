@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "品牌 UGC 视频解析",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["duration_seconds", "summary", "audio", "shots"],
+  "properties": {
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 60
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["has_audio", "voiceover_summary", "music_mood", "transcript"],
+      "properties": {
+        "has_audio": {"type": "boolean"},
+        "voiceover_summary": {"type": "string"},
+        "music_mood": {"type": "string"},
+        "transcript": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["start_seconds", "end_seconds", "text"],
+            "properties": {
+              "start_seconds": {"type": "number", "minimum": 0},
+              "end_seconds": {"type": "number", "minimum": 0},
+              "text": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "source",
+          "start_seconds",
+          "end_seconds",
+          "visual_description",
+          "shot_size",
+          "camera_movement",
+          "composition",
+          "action",
+          "product_presence",
+          "person_presence",
+          "on_screen_text",
+          "audio_cue",
+          "adaptation_function"
+        ],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1, "maximum": 12},
+          "source": {"type": "string", "enum": ["observed", "derived"]},
+          "start_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "end_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "visual_description": {"type": "string", "minLength": 1},
+          "shot_size": {
+            "type": "string",
+            "enum": ["extreme_close_up", "close_up", "medium_close_up", "medium", "full", "wide"]
+          },
+          "camera_movement": {
+            "type": "string",
+            "enum": ["static", "pan", "tilt", "push_in", "pull_out", "tracking", "handheld", "orbit"]
+          },
+          "composition": {"type": "string", "minLength": 1},
+          "action": {"type": "string", "minLength": 1},
+          "product_presence": {"type": "boolean"},
+          "person_presence": {"type": "boolean"},
+          "on_screen_text": {"type": "string"},
+          "audio_cue": {"type": "string"},
+          "adaptation_function": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

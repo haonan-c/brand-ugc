@@ -1,0 +1,19 @@
+真实商品：CeraVe Moisturizing Cream
+品牌：CeraVe
+Amazon ASIN：B00TTD9BRC
+规格：19 oz（539 g）罐装
+商品页：https://www.amazon.com/dp/B00TTD9BRC
+品牌官网：https://www.cerave.com/en-us/skincare/moisturizers/moisturizing-cream
+
+已核验事实：
+1. Amazon 商品页列明品牌和制造商为 CeraVe、ASIN 为 B00TTD9BRC、规格为 19 oz、剂型为 Cream。
+2. CeraVe 官网列明产品适用于面部和身体，定位为 Normal to Dry Skin / Hydration。
+3. CeraVe 官网列明三种必需神经酰胺、透明质酸、二甲基硅氧烷和凡士林，并描述为丰润、非油腻、吸收快。
+4. CeraVe 官网列明产品为 fragrance-free、non-comedogenic。
+5. 产品图可见白色圆罐、白色旋盖、深蓝与亮蓝包装块、CeraVe 品牌字样、Moisturizing Cream 产品名称及 3 Essential Ceramides 标识。
+
+生成约束：
+- 包装必须保持白色圆罐结构、蓝白配色、CeraVe 品牌标识、产品名称和标签版式；不得改成泵瓶、滴管瓶、软管或无品牌容器。
+- 允许保留产品包装本身已有的 CeraVe 标识；不得额外叠加品牌角标、Amazon UI、价格、评分、水印或促销贴纸。
+- 不添加未经上述商品页或官网核验的功效、临床结果、使用前后对比、绝对化承诺、价格、折扣、销量或评价。
+- 人物必须是非真实虚构演员，不得暗示参考视频人物或其他真人为 CeraVe 代言。

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "十二宫格分镜提示词",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["series_lock", "shots"],
+  "properties": {
+    "series_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "person", "environment", "lighting", "color_grade"],
+      "properties": {
+        "product": {"type": "string", "minLength": 1},
+        "person": {"type": "string", "minLength": 1},
+        "environment": {"type": "string", "minLength": 1},
+        "lighting": {"type": "string", "minLength": 1},
+        "color_grade": {"type": "string", "minLength": 1}
+      }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "start_seconds",
+          "end_seconds",
+          "image_prompt",
+          "negative_prompt",
+          "motion_intent",
+          "product_presence",
+          "person_presence",
+          "on_screen_text",
+          "mapping_rationale"
+        ],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1, "maximum": 12},
+          "start_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "end_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "image_prompt": {"type": "string", "minLength": 1},
+          "negative_prompt": {"type": "string", "minLength": 1},
+          "motion_intent": {"type": "string", "minLength": 1},
+          "product_presence": {"type": "boolean"},
+          "person_presence": {"type": "boolean"},
+          "on_screen_text": {"type": "string"},
+          "mapping_rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

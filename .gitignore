@@ -1,0 +1,13 @@
+.DS_Store
+**/.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.env.*
+!.env.example
+imagegen-api/secrets/*
+!imagegen-api/secrets/api_key.example.txt
+runs/
+deliverables/

@@ -1,0 +1,23 @@
+{
+  "api": {
+    "text_base_url": "https://direct.evolink.ai",
+    "api_base_url": "https://api.evolink.ai",
+    "files_base_url": "https://files-api.evolink.ai",
+    "api_key_env": "EVOLINK_API_KEY",
+    "legacy_api_key_env": "IMAGEGEN_API_KEY",
+    "api_key_file": "../../imagegen-api/secrets/api_key.txt",
+    "request_timeout_seconds": 180,
+    "request_retries": 3,
+    "poll_interval_seconds": 3,
+    "poll_timeout_seconds": 600
+  },
+  "models": {
+    "analysis": "gemini-3.1-pro-preview",
+    "image": "gemini-3-pro-image-preview"
+  },
+  "limits": {
+    "max_model_requests": 14,
+    "max_schema_repairs_per_stage": 1,
+    "max_image_regenerations_per_stage": 1
+  }
+}

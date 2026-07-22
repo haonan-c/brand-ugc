@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "新产品12分镜脚本",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "product_summary",
+    "facts_used",
+    "needs_confirmation",
+    "person_policy",
+    "adaptation_summary",
+    "shots"
+  ],
+  "properties": {
+    "product_summary": {"type": "string", "minLength": 1},
+    "facts_used": {"type": "array", "items": {"type": "string"}},
+    "needs_confirmation": {"type": "array", "items": {"type": "string"}},
+    "person_policy": {
+      "type": "string",
+      "enum": ["reference_lock", "fictional_actor", "no_person"]
+    },
+    "adaptation_summary": {"type": "string", "minLength": 1},
+    "shots": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "source_mapping_index",
+          "start_seconds",
+          "end_seconds",
+          "beat",
+          "scene",
+          "visual_description",
+          "shot_size",
+          "camera_movement",
+          "composition",
+          "action",
+          "product_direction",
+          "person_direction",
+          "copy",
+          "audio_cue",
+          "mapping_rationale"
+        ],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1, "maximum": 12},
+          "source_mapping_index": {"type": "integer", "minimum": 1, "maximum": 12},
+          "start_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "end_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "beat": {"type": "string", "minLength": 1},
+          "scene": {"type": "string", "minLength": 1},
+          "visual_description": {"type": "string", "minLength": 1},
+          "shot_size": {
+            "type": "string",
+            "enum": ["extreme_close_up", "close_up", "medium_close_up", "medium", "full", "wide"]
+          },
+          "camera_movement": {
+            "type": "string",
+            "enum": ["static", "pan", "tilt", "push_in", "pull_out", "tracking", "handheld", "orbit"]
+          },
+          "composition": {"type": "string", "minLength": 1},
+          "action": {"type": "string", "minLength": 1},
+          "product_direction": {"type": "string", "minLength": 1},
+          "person_direction": {"type": "string", "minLength": 1},
+          "copy": {"type": "string"},
+          "audio_cue": {"type": "string"},
+          "mapping_rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

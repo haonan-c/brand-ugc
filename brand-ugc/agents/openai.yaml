@@ -1,0 +1,4 @@
+interface:
+  display_name: "品牌 UGC 生成"
+  short_description: "用EvoLink生成品牌UGC视频十二宫格分镜与Seedance提示词"
+  default_prompt: "Use $brand-ugc to turn my benchmark video and product image into a final 12-panel storyboard and a 15-second Seedance prompt."

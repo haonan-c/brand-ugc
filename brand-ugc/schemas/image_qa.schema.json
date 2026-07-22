@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "十二宫格图片视觉QA",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pass", "grid", "checks", "issues", "correction_prompt"],
+  "properties": {
+    "pass": {"type": "boolean"},
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["columns", "rows", "panels", "order_correct"],
+      "properties": {
+        "columns": {"type": "integer", "enum": [3]},
+        "rows": {"type": "integer", "enum": [4]},
+        "panels": {"type": "integer", "enum": [12]},
+        "order_correct": {"type": "boolean"}
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clean_frame",
+        "composition_match",
+        "product_consistency",
+        "person_consistency",
+        "realistic_background",
+        "shot_mapping"
+      ],
+      "properties": {
+        "clean_frame": {"type": "boolean"},
+        "composition_match": {"type": "boolean"},
+        "product_consistency": {"type": "boolean"},
+        "person_consistency": {"type": "boolean"},
+        "realistic_background": {"type": "boolean"},
+        "shot_mapping": {"type": "boolean"}
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["shot_index", "severity", "category", "description"],
+        "properties": {
+          "shot_index": {"type": ["integer", "null"], "minimum": 1, "maximum": 12},
+          "severity": {"type": "string", "enum": ["minor", "major", "critical"]},
+          "category": {
+            "type": "string",
+            "enum": [
+              "grid",
+              "clean_frame",
+              "composition",
+              "product",
+              "person",
+              "background",
+              "mapping"
+            ]
+          },
+          "description": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "correction_prompt": {"type": "string"}
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Seedance十五秒视频提示词",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["master_prompt", "shots"],
+  "properties": {
+    "master_prompt": {"type": "string", "minLength": 1},
+    "shots": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "start_seconds", "end_seconds", "motion_instruction"],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1, "maximum": 12},
+          "start_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "end_seconds": {"type": "number", "minimum": 0, "maximum": 60},
+          "motion_instruction": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
