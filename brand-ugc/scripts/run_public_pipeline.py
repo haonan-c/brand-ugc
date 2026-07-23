@@ -46,6 +46,20 @@ def read_json(path: Path, default: Any = None) -> Any:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
+def check_runtime_dependencies() -> None:
+    missing = [
+        command
+        for command in ("ffmpeg", "ffprobe")
+        if shutil.which(command) is None
+    ]
+    if missing:
+        raise RuntimeError(
+            "缺少运行依赖："
+            + "、".join(missing)
+            + "。请先安装 FFmpeg，并确认这些命令可从 PATH 运行。"
+        )
+
+
 def preview_text(path: Path, max_chars: int = 1200) -> str:
     text = read_text(path).strip()
     if len(text) <= max_chars:
@@ -334,6 +348,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         if optional is not None and not optional.is_file():
             raise RuntimeError(f"输入文件不存在：{optional}")
 
+    check_runtime_dependencies()
+
     resolution = args.resolution.upper()
     if resolution not in {"1K", "2K"}:
         raise RuntimeError("--resolution 仅允许 1K 或 2K；默认 2K，不自动降级。")
@@ -364,6 +380,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "qa",
             "state",
             "media",
+            "deliverables",
         )
     }
     for directory in dirs.values():
@@ -677,6 +694,11 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         )
 
     master_prompt_text = video_prompt_payload["master_prompt"].strip()
+    deliverable_paths = {
+        "final_storyboard": dirs["deliverables"] / "最终12宫格分镜图.png",
+        "video_prompt": dirs["deliverables"] / "视频提示词1-12.txt",
+        "qa_report": dirs["deliverables"] / "QA报告.json",
+    }
     report = {
         "run_dir": str(run_dir),
         "provider": "EvoLink",
@@ -691,14 +713,36 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "final_image": str(final_image),
         "final_qa": final_qa,
         "video_prompt": str(outputs["video_prompt_txt"]),
+        "deliverables": {
+            name: str(path) for name, path in deliverable_paths.items()
+        },
         "request_budget": budget.summary(),
         "conversation_output": {
-            "final_image": str(final_image),
+            "final_image": str(deliverable_paths["final_storyboard"]),
             "video_prompt_text": master_prompt_text,
         },
     }
     write_json(dirs["qa"] / "QA报告.json", report)
     write_json(run_dir / "stage_summary.json", report)
+
+    deliverable_sources = {
+        final_image: deliverable_paths["final_storyboard"],
+        outputs["video_prompt_txt"]: deliverable_paths["video_prompt"],
+        dirs["qa"] / "QA报告.json": deliverable_paths["qa_report"],
+    }
+    deliverable_outputs = list(deliverable_sources.values())
+    if state.complete("deliverables", deliverable_outputs):
+        progress.skip("交付物汇总完成")
+    else:
+        state.mark("deliverables", "running")
+        for source, target in deliverable_sources.items():
+            shutil.copy2(source, target)
+        state.mark("deliverables", "completed", deliverable_outputs)
+        progress.add(
+            "交付物汇总完成",
+            "完成",
+            {"directory": str(dirs["deliverables"])},
+        )
 
     print("\n=== 流程结果预览 ===")
     print(f"\n[1] 视频解析完成\n文件: {outputs['analysis_md']}\n{preview_text(outputs['analysis_md'])}")
@@ -709,10 +753,10 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     print(f"\n[6] 最终分镜图完成\n图片: {final_image}")
     print(f"\n[7] 视频提示词完成\n文件: {outputs['video_prompt_txt']}")
     print("\n=== 对话框输出 ===")
-    print(f"最终12宫格分镜图: {final_image}")
+    print(f"最终12宫格分镜图: {deliverable_paths['final_storyboard']}")
     print("\n视频提示词:")
     print(master_prompt_text)
-    print(f"\n12条详细运动指令已保存：{outputs['video_prompt_txt']}")
+    print(f"\n12条详细运动指令已保存：{deliverable_paths['video_prompt']}")
     print("\n=== 结构化摘要 ===")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return report
@@ -728,7 +772,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--product-info", default="")
     parser.add_argument("--product-info-file")
     parser.add_argument("--config", default=str(DEFAULT_PUBLIC_CONFIG))
-    parser.add_argument("--output-root", default="runs/brand-ugc")
+    parser.add_argument("--output-root", default=".brand_ugc")
     parser.add_argument("--resolution", default="2K")
     parser.add_argument("--resume", action="store_true")
     return parser.parse_args()

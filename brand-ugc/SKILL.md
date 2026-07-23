@@ -12,11 +12,12 @@ description: Generate a final 12-panel brand UGC storyboard image and a producti
 
 1. 从 `https://evolink.ai/dashboard/keys` 获取一个 EvoLink API Key。
 2. 优先设置环境变量 `EVOLINK_API_KEY`。
-3. 也可把密钥写入
-   `~/.codex/skills/imagegen-api/secrets/api_key.txt`。
+3. 也可把密钥写入与本 Skill 同级安装的
+   `imagegen-api/secrets/api_key.txt`；一键全局安装的默认位置是
+   `~/.agents/skills/imagegen-api/secrets/api_key.txt`。
 4. 兼容读取旧环境变量名 `IMAGEGEN_API_KEY`，但其中必须是 EvoLink 密钥。
 5. 不在聊天、日志或提示词中显示密钥。
-6. 确认本机已安装 Python、FFmpeg 和 FFprobe。
+6. 确认本机已安装 Python 3.10 或更高版本、FFmpeg 和 FFprobe。
 
 ## 输入
 
@@ -28,8 +29,23 @@ description: Generate a final 12-panel brand UGC storyboard image and a producti
 
 ## 运行
 
+macOS/Linux：
+
+```bash
+python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
+  --run-name "<run_name>" \
+  --video "<benchmark_video.mp4>" \
+  --product-image "<product.png>" \
+  --person-image "<optional_person.jpg>" \
+  --copy-file "<optional_copy.txt>" \
+  --product-info "<产品名称、可验证卖点和限制>" \
+  --resolution "2K"
+```
+
+Windows PowerShell：
+
 ```powershell
-python "$env:USERPROFILE\.codex\skills\brand-ugc\scripts\run_public_pipeline.py" `
+python "$env:USERPROFILE\.agents\skills\brand-ugc\scripts\run_public_pipeline.py" `
   --run-name "<run_name>" `
   --video "<benchmark_video.mp4>" `
   --product-image "<product.png>" `
@@ -41,6 +57,10 @@ python "$env:USERPROFILE\.codex\skills\brand-ugc\scripts\run_public_pipeline.py"
 
 同名运行已存在时不要覆盖。显式添加 `--resume` 后，仅继续未完成阶段；
 已有 EvoLink 图片任务 ID 时只轮询，不重新提交。
+
+默认把任务的全部数据保存在当前项目的 `.brand_ugc/<run_name>/`，包括输入副本、
+中间产物、生成结果、QA、进度和断点状态。不要在该目录之外创建品牌 UGC 任务
+产物。只有用户显式指定其他位置时才传入 `--output-root`。
 
 `2K` 是默认质量。只有用户明确接受较低质量时才使用 `--resolution 1K`；
 禁止自动从 2K 降级。
@@ -59,6 +79,10 @@ python "$env:USERPROFILE\.codex\skills\brand-ugc\scripts\run_public_pipeline.py"
 6. 最终分镜图：融合产品和可选人物并执行视觉 QA；最多纠错生成一次。
 7. 视频提示词：输出一个可直接使用的 15 秒 Seedance 总提示词和
    12 条逐镜头运动指令到 `outputs/视频提示词1-12.txt`。
+
+流程完成后，把最终十二宫格分镜图、完整视频提示词和最终 QA 报告汇总到
+`deliverables/`。如果需要在流水线之外补充报告或整理文件，也必须保存在同一
+任务目录中；面向用户的最终文件放入 `deliverables/`。
 
 保持用户可见进度词不变：
 
@@ -84,11 +108,11 @@ python "$env:USERPROFILE\.codex\skills\brand-ugc\scripts\run_public_pipeline.py"
 成功后，在聊天中直接发送：
 
 ```markdown
-![最终12宫格分镜图](/absolute/path/to/final_storyboard/image-01.png)
+![最终12宫格分镜图](/absolute/path/to/.brand_ugc/<run_name>/deliverables/最终12宫格分镜图.png)
 
 视频提示词：
 <完整总提示词>
 ```
 
 同时说明 12 条详细运动指令保存在
-`outputs/视频提示词1-12.txt`。
+`.brand_ugc/<run_name>/deliverables/视频提示词1-12.txt`。

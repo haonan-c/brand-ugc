@@ -359,6 +359,15 @@ class OfflinePipelineTests(unittest.TestCase):
                         second = run_pipeline(args)
 
                 run_dir = output_root / "案例一"
+                reported_deliverables = {
+                    name: Path(path).name
+                    for name, path in first["deliverables"].items()
+                }
+                deliverable_names = sorted(
+                    path.name
+                    for path in (run_dir / "deliverables").iterdir()
+                    if path.is_file()
+                )
                 prompt_text = (run_dir / "outputs" / "视频提示词1-12.txt").read_text(
                     encoding="utf-8"
                 )
@@ -378,6 +387,22 @@ class OfflinePipelineTests(unittest.TestCase):
         self.assertEqual((counts["content"], counts["images"]), model_counts)
         self.assertEqual(first["request_budget"]["used"], 8)
         self.assertEqual(second["request_budget"]["used"], 8)
+        self.assertEqual(
+            reported_deliverables,
+            {
+                "final_storyboard": "最终12宫格分镜图.png",
+                "video_prompt": "视频提示词1-12.txt",
+                "qa_report": "QA报告.json",
+            },
+        )
+        self.assertEqual(
+            first["conversation_output"]["final_image"],
+            first["deliverables"]["final_storyboard"],
+        )
+        self.assertEqual(
+            deliverable_names,
+            ["QA报告.json", "最终12宫格分镜图.png", "视频提示词1-12.txt"],
+        )
         self.assertIn("12条分镜运动指令", prompt_text)
         self.assertNotIn("fake-secret", persisted_text)
         self.assertNotIn("base64,", persisted_text)

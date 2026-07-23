@@ -32,6 +32,14 @@ shot-level motion instructions.
 
 You do not need to configure any models manually.
 
+On macOS/Linux, verify the local commands first:
+
+```bash
+python3 --version
+ffmpeg -version
+ffprobe -version
+```
+
 ### 2. Install both skills globally
 
 Run this command once:
@@ -45,18 +53,29 @@ This installs both required skills:
 - `brand-ugc` — the seven-stage UGC workflow
 - `imagegen-api` — the EvoLink image-generation adapter used by the workflow
 
+The current `skills` installer stores global skills under `.agents/skills/` in your
+home directory. Fully quit and restart Codex, or open a new task, after installation
+so Codex reloads the skill list.
+
+Verify that both skills are installed:
+
+```bash
+npx -y skills@latest list --global --agent codex
+```
+
 ### 3. Configure the EvoLink API Key
 
 The recommended method is the `EVOLINK_API_KEY` environment variable.
 
-macOS/Linux, for the current shell:
+macOS/Linux, for processes launched from the current shell:
 
 ```bash
 export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
 ```
 
 Add the same export to the shell profile you use to launch Codex if you want it to
-persist.
+persist, then fully quit and restart Codex. Codex desktop users can also use the
+local-file fallback below.
 
 Windows PowerShell, for the current user:
 
@@ -66,12 +85,16 @@ Windows PowerShell, for the current user:
 
 Restart Codex after setting a persistent environment variable.
 
-As a fallback, save the key by itself in this local file:
+When installed with the one-command installer above, you can instead save the key
+by itself in this local file:
 
 ```text
-Windows:      %USERPROFILE%\.codex\skills\imagegen-api\secrets\api_key.txt
-macOS/Linux:  ~/.codex/skills/imagegen-api/secrets/api_key.txt
+Windows:      %USERPROFILE%\.agents\skills\imagegen-api\secrets\api_key.txt
+macOS/Linux:  ~/.agents/skills/imagegen-api/secrets/api_key.txt
 ```
+
+For a manual `.codex/skills/` installation, use the corresponding
+`.codex/skills/imagegen-api/secrets/api_key.txt` path.
 
 Never paste a real key into chat, screenshots, logs, or Git.
 
@@ -111,8 +134,11 @@ Return the final 12-panel storyboard and the complete Seedance master prompt.
 | Output | 12 shot-level motion instructions | Yes |
 | Output | Structured JSON, progress state, and QA reports | Yes |
 
-Outputs are written locally under `runs/brand-ugc/<run-name>/`. Runtime outputs and
-delivery bundles are intentionally ignored by Git.
+All task data is written locally under `.brand_ugc/<run-name>/`, including copied
+inputs, intermediate artifacts, generated assets, QA, progress, and resume state.
+Final user-facing files are collected in `.brand_ugc/<run-name>/deliverables/`.
+The entire `.brand_ugc/` directory is intentionally ignored by Git. Pass
+`--output-root` only when you explicitly need another location.
 
 ## How it works
 
@@ -170,7 +196,7 @@ Restart Codex after copying the folders.
 The conversational Codex workflow is recommended. For direct pipeline control:
 
 ```bash
-python ~/.codex/skills/brand-ugc/scripts/run_public_pipeline.py \
+python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
   --run-name "my-product-ugc" \
   --video "/absolute/path/reference.mp4" \
   --product-image "/absolute/path/product.png" \
@@ -180,6 +206,7 @@ python ~/.codex/skills/brand-ugc/scripts/run_public_pipeline.py \
   --resolution "2K"
 ```
 
+For a manual installation, replace `.agents/skills` with `.codex/skills`.
 Omit optional arguments when you do not have those inputs. If a run is interrupted,
 repeat the same command with `--resume`. Existing task IDs are polled rather than
 submitted again.

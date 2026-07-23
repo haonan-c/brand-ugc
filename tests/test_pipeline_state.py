@@ -1,20 +1,93 @@
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "brand-ugc" / "scripts"
+PIPELINE = SCRIPTS / "run_public_pipeline.py"
+PUBLIC_CONFIG = ROOT / "brand-ugc" / "config" / "public_gateway.json"
 sys.path.insert(0, str(SCRIPTS))
 
 from evolink_client import EvoLinkError  # noqa: E402
-from run_public_pipeline import _run_image_with_qa, prepare_run_directory  # noqa: E402
+from run_public_pipeline import (  # noqa: E402
+    _run_image_with_qa,
+    parse_args,
+    prepare_run_directory,
+)
 
 
 class ResumeContractTests(unittest.TestCase):
+    def test_cli_reports_missing_media_tools_before_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            video = root / "reference.mp4"
+            product = root / "product.jpg"
+            video.write_bytes(b"video")
+            product.write_bytes(b"image")
+            config = root / "public_gateway.json"
+            config.write_text(
+                PUBLIC_CONFIG.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            empty_path = root / "empty-path"
+            empty_path.mkdir()
+            output_root = root / "output"
+            env = os.environ.copy()
+            env["PATH"] = str(empty_path)
+            env.pop("EVOLINK_API_KEY", None)
+            env.pop("IMAGEGEN_API_KEY", None)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(PIPELINE),
+                    "--run-name",
+                    "安装检查",
+                    "--video",
+                    str(video),
+                    "--product-image",
+                    str(product),
+                    "--config",
+                    str(config),
+                    "--output-root",
+                    str(output_root),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("缺少运行依赖", result.stderr)
+        self.assertIn("ffmpeg", result.stderr)
+        self.assertIn("ffprobe", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertFalse(output_root.exists())
+
+    def test_cli_defaults_to_hidden_project_output_directory(self) -> None:
+        argv = [
+            "run_public_pipeline.py",
+            "--run-name",
+            "案例 A",
+            "--video",
+            "reference.mp4",
+            "--product-image",
+            "product.png",
+        ]
+
+        with patch.object(sys, "argv", argv):
+            args = parse_args()
+
+        self.assertEqual(args.output_root, ".brand_ugc")
+
     def test_existing_run_requires_explicit_resume(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp) / "案例 A"

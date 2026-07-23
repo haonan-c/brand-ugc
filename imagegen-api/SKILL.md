@@ -20,8 +20,10 @@ description: Generate or edit images with EvoLink Nano Banana Pro using local im
 
 ## 运行
 
+macOS/Linux：
+
 ```bash
-python scripts/generate_image.py \
+python3 scripts/generate_image.py \
   --provider nanobanana \
   --prompt-file prompt.txt \
   --image-file reference.png \
@@ -29,6 +31,8 @@ python scripts/generate_image.py \
   --resolution 2K \
   --output-dir generated-images
 ```
+
+Windows PowerShell 使用同一组参数，并把 `python3` 替换为 `python`。
 
 - 固定模型：`gemini-3-pro-image-preview`
 - 支持分辨率：`1K`、`2K`

@@ -30,6 +30,14 @@ Seedance 的 15 秒视频提示词。
 
 用户不需要手动配置模型。
 
+macOS/Linux 可以先确认本机命令可用：
+
+```bash
+python3 --version
+ffmpeg -version
+ffprobe -version
+```
+
 ### 2. 一条命令全局安装两个 Skill
 
 只需运行一次：
@@ -43,17 +51,27 @@ npx -y skills@latest add haonan-c/brand-ugc --skill brand-ugc imagegen-api --age
 - `brand-ugc`——七阶段品牌 UGC 工作流
 - `imagegen-api`——工作流使用的 EvoLink 生图适配器
 
+当前 `skills` 安装器会把全局 Skill 放在用户目录的 `.agents/skills/` 下。
+安装完成后请完全退出并重启 Codex，或新建一个任务，让 Codex 重新加载 Skill。
+
+可以用以下命令确认两个 Skill 都已安装：
+
+```bash
+npx -y skills@latest list --global --agent codex
+```
+
 ### 3. 配置 EvoLink API Key
 
 推荐使用 `EVOLINK_API_KEY` 环境变量。
 
-macOS/Linux 当前终端：
+macOS/Linux 当前终端（只对从该终端启动的进程生效）：
 
 ```bash
 export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
 ```
 
-如需长期生效，请把同一条 `export` 写入启动 Codex 所使用的 Shell 配置文件。
+如需长期生效，请把同一条 `export` 写入启动 Codex 所使用的 Shell 配置文件，
+然后完全退出并重启 Codex。Codex 桌面版用户也可以直接使用下面的本地文件方式。
 
 Windows PowerShell 当前用户：
 
@@ -63,12 +81,15 @@ Windows PowerShell 当前用户：
 
 设置持久环境变量后请重启 Codex。
 
-也可以只把密钥写入以下本地文件：
+使用上面的一键命令安装时，也可以只把密钥写入以下本地文件：
 
 ```text
-Windows:      %USERPROFILE%\.codex\skills\imagegen-api\secrets\api_key.txt
-macOS/Linux:  ~/.codex/skills/imagegen-api/secrets/api_key.txt
+Windows:      %USERPROFILE%\.agents\skills\imagegen-api\secrets\api_key.txt
+macOS/Linux:  ~/.agents/skills/imagegen-api/secrets/api_key.txt
 ```
+
+手动安装到 `.codex/skills/` 时，则使用对应的
+`.codex/skills/imagegen-api/secrets/api_key.txt`。
 
 不要把真实 Key 发到聊天、截图、日志或 Git 中。
 
@@ -108,8 +129,10 @@ macOS/Linux:  ~/.codex/skills/imagegen-api/secrets/api_key.txt
 | 输出 | 12 条逐镜头运动指令 | 是 |
 | 输出 | 结构化 JSON、进度状态和 QA 报告 | 是 |
 
-结果保存在本地 `runs/brand-ugc/<任务名>/`。运行结果和交付包已明确加入 Git
-忽略规则，不会进入仓库。
+任务的全部数据保存在本地 `.brand_ugc/<任务名>/`，包括输入副本、中间产物、
+生成结果、QA、进度和断点状态。面向用户的最终文件汇总在
+`.brand_ugc/<任务名>/deliverables/`。整个 `.brand_ugc/` 已加入 Git 忽略规则；
+只有明确需要其他位置时才传入 `--output-root`。
 
 ## 工作流程
 
@@ -158,7 +181,7 @@ macOS/Linux:  ~/.codex/skills/
 推荐使用 Codex 对话工作流。如需直接控制流水线：
 
 ```bash
-python ~/.codex/skills/brand-ugc/scripts/run_public_pipeline.py \
+python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
   --run-name "my-product-ugc" \
   --video "/absolute/path/reference.mp4" \
   --product-image "/absolute/path/product.png" \
@@ -168,6 +191,7 @@ python ~/.codex/skills/brand-ugc/scripts/run_public_pipeline.py \
   --resolution "2K"
 ```
 
+如果采用手动安装，请把路径中的 `.agents/skills` 替换为 `.codex/skills`。
 没有对应素材时可以省略选填参数。任务中断后，使用相同命令并添加 `--resume`。
 已有任务 ID 时只查询状态，不会重复提交。
 

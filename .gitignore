@@ -9,5 +9,6 @@ __pycache__/
 !.env.example
 imagegen-api/secrets/*
 !imagegen-api/secrets/api_key.example.txt
+.brand_ugc/
 runs/
 deliverables/
