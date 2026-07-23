@@ -12,13 +12,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PREPARE_MEDIA = (
     ROOT
-    / "brand-ugc"
+    / "ugc-storyboard"
     / "scripts"
     / "prepare_analysis_media.py"
 )
 EXTRACT_FRAMES = (
     ROOT
-    / "brand-ugc"
+    / "ugc-storyboard"
     / "scripts"
     / "extract_12_frames.py"
 )

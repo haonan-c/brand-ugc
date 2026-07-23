@@ -1,12 +1,12 @@
 ---
-name: imagegen-api
-description: Generate or edit images with EvoLink Nano Banana Pro using local images or public image URLs. Use when Codex needs gemini-3-pro-image-preview、Nano Banana Pro、图生图、图片编辑，或为 brand-ugc 生成 1K/2K 分镜图并恢复异步任务。
+name: image-generator
+description: Generate or edit 1K/2K images from prompts, local images, or public image URLs through an image-generation API. The current backend is EvoLink Nano Banana Pro. Use when Codex needs 生图、图生图、图片编辑、gemini-3-pro-image-preview、Nano Banana Pro，或为 ugc-storyboard 生成分镜图并恢复异步任务。
 ---
 
-# EvoLink Image Generation
+# 图片生成
 
 使用 `gemini-3-pro-image-preview` 创建 EvoLink 异步图片任务，轮询结果并立即
-下载到本地。该 Skill 与 `brand-ugc` 一起安装，共用其薄适配器。
+下载到本地。当前实现使用 EvoLink，并与 `ugc-storyboard` 一起安装，共用其薄适配器。
 
 ## 配置
 

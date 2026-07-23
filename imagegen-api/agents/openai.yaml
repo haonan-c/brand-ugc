@@ -1,4 +1,0 @@
-interface:
-  display_name: "EvoLink 图片生成"
-  short_description: "通过EvoLink Nano Banana Pro生成或编辑1K/2K图片"
-  default_prompt: "Use $imagegen-api to generate a 2K image with EvoLink Nano Banana Pro."

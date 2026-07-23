@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT / "brand-ugc"
+SKILL_DIR = ROOT / "ugc-storyboard"
 sys.path.insert(0, str(SKILL_DIR / "scripts"))
 
 from run_public_pipeline import run_pipeline  # noqa: E402

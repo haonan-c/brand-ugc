@@ -10,9 +10,9 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "brand-ugc" / "scripts"
+SCRIPTS = ROOT / "ugc-storyboard" / "scripts"
 PIPELINE = SCRIPTS / "run_public_pipeline.py"
-PUBLIC_CONFIG = ROOT / "brand-ugc" / "config" / "public_gateway.json"
+PUBLIC_CONFIG = ROOT / "ugc-storyboard" / "config" / "public_gateway.json"
 sys.path.insert(0, str(SCRIPTS))
 
 from evolink_client import EvoLinkError  # noqa: E402

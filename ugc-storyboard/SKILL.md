@@ -1,9 +1,9 @@
 ---
-name: brand-ugc
+name: ugc-storyboard
 description: Generate a final 12-panel brand UGC storyboard image and a production-ready 15-second Seedance prompt from a benchmark video, product image, optional person image, copy, and product notes. Use when Codex needs to analyze or adapt a 品牌 UGC 短视频、生成十二宫格分镜、替换商品或人物、运行 EvoLink 多模态分析和生图流程，或继续一个中断的分镜任务。
 ---
 
-# 品牌 UGC 生成
+# UGC 分镜生成
 
 运行七阶段品牌 UGC 视频改编流程，最终交付十二宫格分镜图和 Seedance 视频提示词，
 不生成最终 MP4。
@@ -13,8 +13,8 @@ description: Generate a final 12-panel brand UGC storyboard image and a producti
 1. 从 `https://evolink.ai/dashboard/keys` 获取一个 EvoLink API Key。
 2. 优先设置环境变量 `EVOLINK_API_KEY`。
 3. 也可把密钥写入与本 Skill 同级安装的
-   `imagegen-api/secrets/api_key.txt`；一键全局安装的默认位置是
-   `~/.agents/skills/imagegen-api/secrets/api_key.txt`。
+   `image-generator/secrets/api_key.txt`；一键全局安装的默认位置是
+   `~/.agents/skills/image-generator/secrets/api_key.txt`。
 4. 兼容读取旧环境变量名 `IMAGEGEN_API_KEY`，但其中必须是 EvoLink 密钥。
 5. 不在聊天、日志或提示词中显示密钥。
 6. 确认本机已安装 Python 3.10 或更高版本、FFmpeg 和 FFprobe。
@@ -32,7 +32,7 @@ description: Generate a final 12-panel brand UGC storyboard image and a producti
 macOS/Linux：
 
 ```bash
-python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
+python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
   --run-name "<run_name>" \
   --video "<benchmark_video.mp4>" \
   --product-image "<product.png>" \
@@ -45,7 +45,7 @@ python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
 Windows PowerShell：
 
 ```powershell
-python "$env:USERPROFILE\.agents\skills\brand-ugc\scripts\run_public_pipeline.py" `
+python "$env:USERPROFILE\.agents\skills\ugc-storyboard\scripts\run_public_pipeline.py" `
   --run-name "<run_name>" `
   --video "<benchmark_video.mp4>" `
   --product-image "<product.png>" `

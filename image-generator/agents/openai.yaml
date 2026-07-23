@@ -1,0 +1,4 @@
+interface:
+  display_name: "图片生成"
+  short_description: "通过可扩展图片生成API创建、编辑与恢复1K/2K图片任务"
+  default_prompt: "Use $image-generator to generate a 2K image from my prompt and reference images."

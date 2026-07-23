@@ -16,8 +16,8 @@ SECRET_FILE = SKILL_DIR / "secrets" / "api_key.txt"
 
 def _load_adapter():
     candidates = [
-        SKILL_DIR.parent / "brand-ugc" / "scripts",
-        Path.home() / ".codex" / "skills" / "brand-ugc" / "scripts",
+        SKILL_DIR.parent / "ugc-storyboard" / "scripts",
+        Path.home() / ".codex" / "skills" / "ugc-storyboard" / "scripts",
     ]
     for candidate in candidates:
         if (candidate / "evolink_client.py").exists():
@@ -26,7 +26,7 @@ def _load_adapter():
 
             return EvoLinkClient, EvoLinkError, limit_image_prompt
     raise SystemExit(
-        "缺少 EvoLink 适配器。请同时安装 brand-ugc skill。"
+        "缺少 EvoLink 适配器。请同时安装 ugc-storyboard skill。"
     )
 
 

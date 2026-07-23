@@ -7,8 +7,8 @@ __pycache__/
 .env
 .env.*
 !.env.example
-imagegen-api/secrets/*
-!imagegen-api/secrets/api_key.example.txt
+image-generator/secrets/*
+!image-generator/secrets/api_key.example.txt
 .brand_ugc/
 runs/
 deliverables/

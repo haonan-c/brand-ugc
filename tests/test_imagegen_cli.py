@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-IMAGEGEN = ROOT / "imagegen-api" / "scripts" / "generate_image.py"
+IMAGEGEN = ROOT / "image-generator" / "scripts" / "generate_image.py"
 
 
 class ImagegenCompatibilityTests(unittest.TestCase):

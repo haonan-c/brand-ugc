@@ -71,7 +71,7 @@ Authorization: Bearer <EVOLINK_API_KEY>
 
 1. `EVOLINK_API_KEY`
 2. 兼容环境变量名 `IMAGEGEN_API_KEY`
-3. `imagegen-api/secrets/api_key.txt`
+3. `image-generator/secrets/api_key.txt`
 
 第二项只是变量名兼容，值仍必须是 EvoLink 密钥。EvoLink 返回 401 时，程序会
 明确提示旧服务密钥不受支持。

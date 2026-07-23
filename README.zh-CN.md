@@ -6,12 +6,12 @@
   <img src="assets/brand-ugc-workflow.png" alt="从对标视频和产品素材生成十二宫格分镜与生产提示词" width="100%">
 </p>
 
-# brand-ugc
+# ugc-storyboard
 
 把对标 UGC 视频和产品素材，转化为品牌专属的 12 宫格分镜和可直接用于
 Seedance 的 15 秒视频提示词。
 
-`brand-ugc` 是面向品牌营销人员和 UGC 创作者的 Codex Skill。它会解析对标视频，
+`ugc-storyboard` 是面向品牌营销人员和 UGC 创作者的 Codex Skill。它会解析对标视频，
 根据新产品和可选人物素材改编创意，生成并检查最终分镜，然后输出视频总提示词和
 12 条逐镜头运动指令。
 
@@ -43,13 +43,13 @@ ffprobe -version
 只需运行一次：
 
 ```bash
-npx -y skills@latest add haonan-c/brand-ugc --skill brand-ugc imagegen-api --agent codex --global --yes
+npx -y skills@latest add haonan-c/brand-ugc --skill ugc-storyboard image-generator --agent codex --global --yes
 ```
 
 该命令会同时安装两个必需的 Skill：
 
-- `brand-ugc`——七阶段品牌 UGC 工作流
-- `imagegen-api`——工作流使用的 EvoLink 生图适配器
+- `ugc-storyboard`——七阶段 UGC 分镜工作流
+- `image-generator`——工作流使用的生图适配器
 
 当前 `skills` 安装器会把全局 Skill 放在用户目录的 `.agents/skills/` 下。
 安装完成后请完全退出并重启 Codex，或新建一个任务，让 Codex 重新加载 Skill。
@@ -84,12 +84,12 @@ Windows PowerShell 当前用户：
 使用上面的一键命令安装时，也可以只把密钥写入以下本地文件：
 
 ```text
-Windows:      %USERPROFILE%\.agents\skills\imagegen-api\secrets\api_key.txt
-macOS/Linux:  ~/.agents/skills/imagegen-api/secrets/api_key.txt
+Windows:      %USERPROFILE%\.agents\skills\image-generator\secrets\api_key.txt
+macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 ```
 
 手动安装到 `.codex/skills/` 时，则使用对应的
-`.codex/skills/imagegen-api/secrets/api_key.txt`。
+`.codex/skills/image-generator/secrets/api_key.txt`。
 
 不要把真实 Key 发到聊天、截图、日志或 Git 中。
 
@@ -98,7 +98,7 @@ macOS/Linux:  ~/.agents/skills/imagegen-api/secrets/api_key.txt
 上传对标视频和产品图后发送：
 
 ```text
-请使用 $brand-ugc 生成一个 15 秒品牌 UGC 分镜。
+请使用 $ugc-storyboard 生成一个 15 秒品牌 UGC 分镜。
 
 我已上传：
 1. 对标视频
@@ -167,7 +167,7 @@ macOS/Linux:  ~/.agents/skills/imagegen-api/secrets/api_key.txt
 1. 从 [GitHub](https://github.com/haonan-c/brand-ugc/archive/refs/heads/main.zip)
    下载仓库。
 2. 解压下载文件。
-3. 把 `brand-ugc` 和 `imagegen-api` 两个目录都复制到 Codex Skills 目录。
+3. 把 `ugc-storyboard` 和 `image-generator` 两个目录都复制到 Codex Skills 目录。
 
 ```text
 Windows:      %USERPROFILE%\.codex\skills\
@@ -181,7 +181,7 @@ macOS/Linux:  ~/.codex/skills/
 推荐使用 Codex 对话工作流。如需直接控制流水线：
 
 ```bash
-python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
+python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
   --run-name "my-product-ugc" \
   --video "/absolute/path/reference.mp4" \
   --product-image "/absolute/path/product.png" \
@@ -206,10 +206,10 @@ PYTHONPATH=. uv run --with pytest pytest -q
 仓库结构：
 
 ```text
-brand-ugc/       主工作流 Skill
-imagegen-api/    EvoLink 生图适配器
+ugc-storyboard/  主工作流 Skill
+image-generator/ 生图适配器
 tests/           合同、状态、媒体和离线端到端测试
-test-assets/     已授权或已记录来源的测试输入
+examples/        已授权或已记录来源的案例素材
 docs/            API 兼容性说明
 ```
 
@@ -218,5 +218,5 @@ docs/            API 兼容性说明
 项目原创代码采用 [MIT License](LICENSE)。
 
 改编的工作流思路和受控词汇继续遵循上游许可证。详情见
-[`brand-ugc/THIRD_PARTY_NOTICES.md`](brand-ugc/THIRD_PARTY_NOTICES.md) 和
-[`brand-ugc/licenses/`](brand-ugc/licenses/)。
+[`ugc-storyboard/THIRD_PARTY_NOTICES.md`](ugc-storyboard/THIRD_PARTY_NOTICES.md) 和
+[`ugc-storyboard/licenses/`](ugc-storyboard/licenses/)。

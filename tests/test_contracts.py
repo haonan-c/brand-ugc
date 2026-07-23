@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT / "brand-ugc"
+SKILL_DIR = ROOT / "ugc-storyboard"
 sys.path.insert(0, str(SKILL_DIR / "scripts"))
 
 from contracts import (  # noqa: E402

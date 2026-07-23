@@ -6,12 +6,12 @@
   <img src="assets/brand-ugc-workflow.png" alt="Reference video and product assets becoming a 12-panel storyboard and production prompt" width="100%">
 </p>
 
-# brand-ugc
+# ugc-storyboard
 
 Turn a reference UGC video and product assets into a brand-specific 12-panel
 storyboard and a production-ready 15-second Seedance prompt.
 
-`brand-ugc` is a Codex skill for brand marketers and UGC creators. It analyzes a
+`ugc-storyboard` is a Codex skill for brand marketers and UGC creators. It analyzes a
 reference video, adapts the creative to a new product and optional person, generates
 and validates a final storyboard, then writes the master video prompt and 12
 shot-level motion instructions.
@@ -45,13 +45,13 @@ ffprobe -version
 Run this command once:
 
 ```bash
-npx -y skills@latest add haonan-c/brand-ugc --skill brand-ugc imagegen-api --agent codex --global --yes
+npx -y skills@latest add haonan-c/brand-ugc --skill ugc-storyboard image-generator --agent codex --global --yes
 ```
 
 This installs both required skills:
 
-- `brand-ugc` — the seven-stage UGC workflow
-- `imagegen-api` — the EvoLink image-generation adapter used by the workflow
+- `ugc-storyboard` — the seven-stage UGC storyboard workflow
+- `image-generator` — the image-generation adapter used by the workflow
 
 The current `skills` installer stores global skills under `.agents/skills/` in your
 home directory. Fully quit and restart Codex, or open a new task, after installation
@@ -89,12 +89,12 @@ When installed with the one-command installer above, you can instead save the ke
 by itself in this local file:
 
 ```text
-Windows:      %USERPROFILE%\.agents\skills\imagegen-api\secrets\api_key.txt
-macOS/Linux:  ~/.agents/skills/imagegen-api/secrets/api_key.txt
+Windows:      %USERPROFILE%\.agents\skills\image-generator\secrets\api_key.txt
+macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 ```
 
 For a manual `.codex/skills/` installation, use the corresponding
-`.codex/skills/imagegen-api/secrets/api_key.txt` path.
+`.codex/skills/image-generator/secrets/api_key.txt` path.
 
 Never paste a real key into chat, screenshots, logs, or Git.
 
@@ -103,7 +103,7 @@ Never paste a real key into chat, screenshots, logs, or Git.
 Upload a reference video and product image, then send:
 
 ```text
-Use $brand-ugc to create a 15-second brand UGC storyboard.
+Use $ugc-storyboard to create a 15-second brand UGC storyboard.
 
 I uploaded:
 1. A reference video
@@ -182,7 +182,7 @@ Use this fallback if Node.js is unavailable:
 1. Download the repository from
    [GitHub](https://github.com/haonan-c/brand-ugc/archive/refs/heads/main.zip).
 2. Extract the archive.
-3. Copy both `brand-ugc` and `imagegen-api` into your Codex skills directory.
+3. Copy both `ugc-storyboard` and `image-generator` into your Codex skills directory.
 
 ```text
 Windows:      %USERPROFILE%\.codex\skills\
@@ -196,7 +196,7 @@ Restart Codex after copying the folders.
 The conversational Codex workflow is recommended. For direct pipeline control:
 
 ```bash
-python3 ~/.agents/skills/brand-ugc/scripts/run_public_pipeline.py \
+python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
   --run-name "my-product-ugc" \
   --video "/absolute/path/reference.mp4" \
   --product-image "/absolute/path/product.png" \
@@ -222,10 +222,10 @@ PYTHONPATH=. uv run --with pytest pytest -q
 Repository layout:
 
 ```text
-brand-ugc/       Main workflow skill
-imagegen-api/    EvoLink image-generation adapter
+ugc-storyboard/  Main workflow skill
+image-generator/ Image-generation adapter
 tests/           Contract, state, media, and offline end-to-end tests
-test-assets/     Licensed or source-documented test inputs
+examples/        Licensed or source-documented example inputs
 docs/            API compatibility notes
 ```
 
@@ -234,5 +234,5 @@ docs/            API compatibility notes
 The original project code is available under the [MIT License](LICENSE).
 
 Adapted workflow ideas and controlled vocabularies retain their upstream licenses.
-See [`brand-ugc/THIRD_PARTY_NOTICES.md`](brand-ugc/THIRD_PARTY_NOTICES.md) and
-[`brand-ugc/licenses/`](brand-ugc/licenses/) for details.
+See [`ugc-storyboard/THIRD_PARTY_NOTICES.md`](ugc-storyboard/THIRD_PARTY_NOTICES.md) and
+[`ugc-storyboard/licenses/`](ugc-storyboard/licenses/) for details.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STAGES = ROOT / "brand-ugc" / "references" / "stages"
+STAGES = ROOT / "ugc-storyboard" / "references" / "stages"
 
 
 class BrandedProductPromptContractTests(unittest.TestCase):

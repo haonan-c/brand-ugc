@@ -5,7 +5,7 @@
     "files_base_url": "https://files-api.evolink.ai",
     "api_key_env": "EVOLINK_API_KEY",
     "legacy_api_key_env": "IMAGEGEN_API_KEY",
-    "api_key_file": "../../imagegen-api/secrets/api_key.txt",
+    "api_key_file": "../../image-generator/secrets/api_key.txt",
     "request_timeout_seconds": 180,
     "request_retries": 3,
     "poll_interval_seconds": 3,
