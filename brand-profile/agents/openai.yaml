@@ -1,0 +1,4 @@
+interface:
+  display_name: "品牌档案"
+  short_description: "创建、校验并解析可复用的多品牌和多产品营销事实档案"
+  default_prompt: "Use $brand-profile to create or update a reusable brand and product profile."

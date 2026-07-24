@@ -1,0 +1,4 @@
+interface:
+  display_name: "UGC 图文生成"
+  short_description: "分析对标图文并生成品牌专属的完整小红书式组图候选稿"
+  default_prompt: "Use $ugc-image-post to turn my benchmark images, copy, and product assets into a branded image post."

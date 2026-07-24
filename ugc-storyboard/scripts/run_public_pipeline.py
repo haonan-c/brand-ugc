@@ -46,6 +46,58 @@ def read_json(path: Path, default: Any = None) -> Any:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
+def resolve_brand_profile(
+    profile_path: Path,
+    product_id: str | None = None,
+) -> dict[str, Any]:
+    """Resolve one product from a reusable brand profile."""
+
+    profile = read_json(profile_path)
+    if not isinstance(profile, dict):
+        raise RuntimeError("品牌档案顶层必须是 JSON 对象。")
+    products = profile.get("products")
+    if not isinstance(products, list):
+        raise RuntimeError("品牌档案 products 必须是数组。")
+    if product_id:
+        product = next(
+            (item for item in products if item.get("product_id") == product_id),
+            None,
+        )
+        if product is None:
+            raise RuntimeError(f"品牌档案中不存在产品：{product_id}")
+    elif len(products) == 1:
+        product = products[0]
+    else:
+        raise RuntimeError("品牌档案包含多个产品时必须提供 --brand-product-id。")
+    return {
+        "schema_version": profile.get("schema_version", 1),
+        "brand_id": profile.get("brand_id", ""),
+        "brand_name": profile.get("brand_name", ""),
+        "audiences": profile.get("audiences", []),
+        "voice": profile.get("voice", {}),
+        "visual": profile.get("visual", {}),
+        "compliance": profile.get("compliance", {}),
+        "defaults": profile.get("defaults", {}),
+        "product": product,
+    }
+
+
+def build_product_context(
+    task_product_info: str,
+    brand_context: dict[str, Any] | None,
+) -> str:
+    """Place task-specific facts before optional reusable brand constraints."""
+
+    if brand_context is None:
+        return task_product_info
+    return (
+        task_product_info.strip()
+        + "\n\n【可复用品牌档案】\n"
+        + "以下档案低于本次任务明确指令，但其中禁用表达与事实边界必须遵守。\n"
+        + json.dumps(brand_context, ensure_ascii=False, indent=2)
+    ).strip()
+
+
 def check_runtime_dependencies() -> None:
     missing = [
         command
@@ -341,10 +393,16 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     product_source = Path(args.product_image).expanduser().resolve()
     person_source = Path(args.person_image).expanduser().resolve() if args.person_image else None
     copy_source = Path(args.copy_file).expanduser().resolve() if args.copy_file else None
+    brand_profile_value = getattr(args, "brand_profile_file", None)
+    brand_profile_source = (
+        Path(brand_profile_value).expanduser().resolve()
+        if brand_profile_value
+        else None
+    )
     for required in (video_source, product_source):
         if not required.is_file():
             raise RuntimeError(f"输入文件不存在：{required}")
-    for optional in (person_source, copy_source):
+    for optional in (person_source, copy_source, brand_profile_source):
         if optional is not None and not optional.is_file():
             raise RuntimeError(f"输入文件不存在：{optional}")
 
@@ -390,13 +448,29 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     product_image = copy_input(product_source, dirs["inputs"])
     person_image = copy_input(person_source, dirs["inputs"])
     copy_file = copy_input(copy_source, dirs["inputs"])
+    brand_profile_file = copy_input(
+        brand_profile_source,
+        dirs["inputs"] / "brand-profile",
+    )
     assert video is not None and product_image is not None
+
+    brand_context = (
+        resolve_brand_profile(
+            brand_profile_file,
+            getattr(args, "brand_product_id", None),
+        )
+        if brand_profile_file
+        else None
+    )
+    if brand_context is not None:
+        write_json(dirs["inputs"] / "品牌任务上下文.json", brand_context)
 
     product_info = args.product_info
     if args.product_info_file:
         product_info = read_text(Path(args.product_info_file).expanduser().resolve())
     if not product_info.strip():
         product_info = f"产品名称：{product_image.stem}\n产品备注：需要确认。"
+    product_info = build_product_context(product_info, brand_context)
     product_info_path = dirs["inputs"] / "产品信息.txt"
     if not product_info_path.exists():
         write_text(product_info_path, product_info.strip() + "\n")
@@ -430,6 +504,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "product_image": str(product_image),
                 "person_image": str(person_image or ""),
                 "copy_file": str(copy_file or ""),
+                "brand_profile_file": str(brand_profile_file or ""),
             },
         )
 
@@ -665,6 +740,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "06-video-prompt.md",
                 十二分镜提示词JSON=shot_prompts,
                 用户文案=copy_text,
+                品牌任务上下文=brand_context or "未提供",
                 图片顺序=(
                     "图片1为最终十二宫格，图片2为产品图；"
                     "如有图片3，则为人物参考图。"
@@ -713,6 +789,11 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "final_image": str(final_image),
         "final_qa": final_qa,
         "video_prompt": str(outputs["video_prompt_txt"]),
+        "brand_context": str(
+            (dirs["inputs"] / "品牌任务上下文.json")
+            if brand_context is not None
+            else ""
+        ),
         "deliverables": {
             name: str(path) for name, path in deliverable_paths.items()
         },
@@ -771,6 +852,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--copy-file")
     parser.add_argument("--product-info", default="")
     parser.add_argument("--product-info-file")
+    parser.add_argument("--brand-profile-file")
+    parser.add_argument("--brand-product-id")
     parser.add_argument("--config", default=str(DEFAULT_PUBLIC_CONFIG))
     parser.add_argument("--output-root", default=".brand_ugc")
     parser.add_argument("--resolution", default="2K")

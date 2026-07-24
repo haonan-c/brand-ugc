@@ -3,217 +3,181 @@
 </p>
 
 <p align="center">
-  <img src="assets/brand-ugc-workflow.png" alt="Reference video and product assets becoming a 12-panel storyboard and production prompt" width="100%">
+  <img src="assets/brand-ugc-workflow.png" alt="Brand UGC content production workflow" width="100%">
 </p>
 
-# ugc-storyboard
+# brand-ugc
 
-Turn a reference UGC video and product assets into a brand-specific 12-panel
-storyboard and a production-ready 15-second Seedance prompt.
+Diagnose a brand marketing request from one entry point, then turn a benchmark
+video or image post into brand-specific content.
 
-`ugc-storyboard` is a Codex skill for brand marketers and UGC creators. It analyzes a
-reference video, adapts the creative to a new product and optional person, generates
-and validates a final storyboard, then writes the master video prompt and 12
-shot-level motion instructions.
+This repository contains five composable Codex Skills:
+
+- `ask-brand` diagnoses the request, checks assets, and routes one workflow.
+- `brand-profile` maintains reusable local profiles for multiple brands and products.
+- `ugc-image-post` creates Xiaohongshu-style image-post candidates, copy, previews, and QA.
+- `ugc-storyboard` creates 12-panel video storyboards and Seedance prompts.
+- `image-generator` is the shared EvoLink image-generation adapter.
 
 > [!IMPORTANT]
-> The current version does **not** render the final MP4. It prepares the storyboard
-> and prompts you can take into Seedance.
+> The image-post workflow creates publishable candidates but does not post them.
+> The video workflow creates storyboards and prompts but does not render the final MP4.
 
 ## Quickstart
 
-### 1. Check the prerequisites
+### 1. Requirements
 
 - [Codex](https://openai.com/codex/)
-- Node.js and `npx` — required only for the one-command installer
+- Node.js and `npx`, required only for one-command installation
 - Python 3.10 or newer
-- FFmpeg and FFprobe
-- An [EvoLink API Key](https://evolink.ai/dashboard/keys)
+- Image posts: ImageMagick and a CJK font such as Noto Sans CJK SC
+- Video: FFmpeg and FFprobe
+- Online generation: an [EvoLink API Key](https://evolink.ai/dashboard/keys)
 
-You do not need to configure any models manually.
-
-On macOS/Linux, verify the local commands first:
-
-```bash
-python3 --version
-ffmpeg -version
-ffprobe -version
-```
-
-### 2. Install both skills globally
-
-Run this command once:
+### 2. Install all Skills
 
 ```bash
-npx -y skills@latest add haonan-c/brand-ugc --skill ugc-storyboard image-generator --agent codex --global --yes
+npx -y skills@latest add haonan-c/brand-ugc \
+  --skill ask-brand brand-profile ugc-image-post ugc-storyboard image-generator \
+  --agent codex --global --yes
 ```
 
-This installs both required skills:
-
-- `ugc-storyboard` — the seven-stage UGC storyboard workflow
-- `image-generator` — the image-generation adapter used by the workflow
-
-The current `skills` installer stores global skills under `.agents/skills/` in your
-home directory. Fully quit and restart Codex, or open a new task, after installation
-so Codex reloads the skill list.
-
-Verify that both skills are installed:
+Fully restart Codex or open a new task, then verify:
 
 ```bash
 npx -y skills@latest list --global --agent codex
 ```
 
-### 3. Configure the EvoLink API Key
-
-The recommended method is the `EVOLINK_API_KEY` environment variable.
-
-macOS/Linux, for processes launched from the current shell:
+### 3. Configure EvoLink
 
 ```bash
 export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
 ```
 
-Add the same export to the shell profile you use to launch Codex if you want it to
-persist, then fully quit and restart Codex. Codex desktop users can also use the
-local-file fallback below.
-
-Windows PowerShell, for the current user:
-
-```powershell
-[Environment]::SetEnvironmentVariable("EVOLINK_API_KEY", "<YOUR_EVOLINK_KEY>", "User")
-```
-
-Restart Codex after setting a persistent environment variable.
-
-When installed with the one-command installer above, you can instead save the key
-by itself in this local file:
+Alternatively, save the key by itself at:
 
 ```text
 Windows:      %USERPROFILE%\.agents\skills\image-generator\secrets\api_key.txt
 macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 ```
 
-For a manual `.codex/skills/` installation, use the corresponding
-`.codex/skills/image-generator/secrets/api_key.txt` path.
-
 Never paste a real key into chat, screenshots, logs, or Git.
 
-### 4. Ask Codex to create the storyboard
+### 4. Start from the router
 
-Upload a reference video and product image, then send:
+```text
+Use $ask-brand to decide whether these launch assets should become an image post
+or a short video first, then continue with the recommended workflow.
+
+I uploaded:
+1. Product images
+2. Benchmark images and copy, if available
+3. A benchmark video, if available
+4. A brand profile, if available
+```
+
+You can invoke either production Skill directly when the desired format is clear.
+
+## Image-post workflow
+
+Provide one ordered set of benchmark images, its copy, and a product image:
+
+```text
+Use $ugc-image-post to create a Xiaohongshu-style branded image-post candidate.
+
+Transfer only the structure and creative method. Do not copy wording, people,
+trademarks, watermarks, or platform UI. Create six 3:4 pages and three title
+options by default. Show me the content plan before paid generation.
+```
+
+The workflow:
+
+1. Analyzes the hook, page roles, narrative, hierarchy, and visual patterns.
+2. Creates a 4–9 page plan, defaulting to six.
+3. Waits for approval before image generation.
+4. Generates text-free backgrounds and composes real product pixels, text, and logos locally.
+5. Runs group QA, with at most two page retries and one retry per page.
+6. Delivers individual pages, a preview, publish copy, structured content, and QA.
+
+Online runs require a visual QA report before they are marked complete. All run data
+lives under `.brand_ugc/<run-name>/`; final files are collected in `deliverables/`.
+
+## Video workflow
+
+Provide a benchmark video and product image:
 
 ```text
 Use $ugc-storyboard to create a 15-second brand UGC storyboard.
 
-I uploaded:
-1. A reference video
-2. A product image
-3. A person reference image (optional)
-4. Copy or a copy file (optional)
-
-Product name:
-<name>
-
-Verified product notes:
-- <facts visible in the product image or supplied by me>
-
-Use 2K output. Do not add unsupported claims, subtitles, watermarks, or platform UI.
-Return the final 12-panel storyboard and the complete Seedance master prompt.
+Return a 2K 12-panel storyboard and the complete Seedance prompt. Do not add
+unsupported claims, subtitles, watermarks, or platform UI.
 ```
+
+The existing seven-stage workflow remains intact: video analysis, local frame
+extraction, rewritten script, 12 image prompts, template storyboard, final storyboard,
+and video prompt.
+
+## Brand profiles
+
+`brand-profile` stores voice, colors, fonts, logos, prohibited language, and verified
+product claims under:
+
+```text
+.brand_ugc/brands/<brand-id>/profile.json
+```
+
+Multiple brands and products are supported. Task overrides do not silently rewrite
+the saved profile. Every verified claim must include evidence.
 
 ## Inputs and outputs
 
-| Type | Item | Required |
+| Path | Required input | Main output |
 | --- | --- | --- |
-| Input | Reference UGC video, usually around 15 seconds | Yes |
-| Input | Product image or product contact sheet | Yes |
-| Input | Person reference image | No |
-| Input | Copy, product facts, and constraints | No, but recommended |
-| Output | Final 2K 12-panel storyboard | Yes |
-| Output | 15-second Seedance master prompt | Yes |
-| Output | 12 shot-level motion instructions | Yes |
-| Output | Structured JSON, progress state, and QA reports | Yes |
+| Image post | 1–9 benchmark images, benchmark copy, product image | 4–9 3:4 pages, three titles, copy, preview, JSON, QA |
+| Video | Benchmark video, product image | 2K storyboard, Seedance prompt, 12 motion instructions, QA |
+| Brand profile | Brand ID, brand name, products | Reusable `profile.json` and resolved task context |
 
-All task data is written locally under `.brand_ugc/<run-name>/`, including copied
-inputs, intermediate artifacts, generated assets, QA, progress, and resume state.
-Final user-facing files are collected in `.brand_ugc/<run-name>/deliverables/`.
-The entire `.brand_ugc/` directory is intentionally ignored by Git. Pass
-`--output-root` only when you explicitly need another location.
+Person images, brand profiles, and additional verified facts are optional.
 
-## How it works
+## Privacy, cost, and quality
 
-The workflow runs seven controlled stages:
+- Original video stays local; only a derived proxy and optional mono audio are analyzed remotely.
+- Benchmark post images are not sent as online generation references; product references are sent only for interaction pages.
+- Logs must not contain API keys, authorization headers, Base64, or temporary URLs.
+- 2K is the default and is never silently downgraded.
+- A six-page image post uses six base generations and at most two page retries.
+- A video run is capped at the configured 14 model business requests.
+- Missing product facts remain unverified; the workflows do not invent claims.
 
-1. **Analyze the reference video** — create a local muted proxy of at most 720p and,
-   when present, a mono audio track for multimodal analysis.
-2. **Build the reference board** — extract 12 frames from the original video locally.
-3. **Rewrite the shot script** — adapt the creative to the supplied product, person,
-   copy, and verified facts.
-4. **Write 12 image prompts** — lock composition, product appearance, character, and
-   continuity across shots.
-5. **Generate the template storyboard** — render one 2K board and run visual QA.
-6. **Generate the final storyboard** — integrate the product and optional person,
-   then run visual QA again.
-7. **Write the video prompt** — produce one Seedance master prompt plus 12 detailed
-   motion instructions.
+## Advanced CLI
 
-Every structured stage is validated against JSON Schema. Schema repair and image
-regeneration are each limited to one retry.
+Codex first creates a Schema-valid image-post plan, then runs:
 
-## Privacy, cost, and quality safeguards
-
-- The original reference video stays local. Only a derived muted analysis proxy and
-  optional mono audio track are sent for analysis.
-- Product and optional person images are sent to EvoLink only when required by the
-  generation workflow.
-- Logs must not contain API keys, authorization headers, Base64 payloads, or temporary
-  resource URLs.
-- The workflow checks EvoLink balance before paid generation.
-- A run is capped at 14 model business requests.
-- `2K` is the default. The workflow never silently downgrades to `1K`.
-- Missing product facts remain unverified; the workflow must not invent claims.
-- If an image fails QA twice, the run stops and preserves the report instead of
-  passing a failed asset downstream.
-
-## Manual installation
-
-Use this fallback if Node.js is unavailable:
-
-1. Download the repository from
-   [GitHub](https://github.com/haonan-c/brand-ugc/archive/refs/heads/main.zip).
-2. Extract the archive.
-3. Copy both `ugc-storyboard` and `image-generator` into your Codex skills directory.
-
-```text
-Windows:      %USERPROFILE%\.codex\skills\
-macOS/Linux:  ~/.codex/skills/
+```bash
+python3 ~/.agents/skills/ugc-image-post/scripts/run_pipeline.py \
+  --run-name "my-product-post" \
+  --reference-image "/absolute/path/reference-01.png" \
+  --reference-copy-file "/absolute/path/reference-copy.txt" \
+  --product-image "/absolute/path/product.png" \
+  --plan-file "/absolute/path/content-plan.json"
 ```
 
-Restart Codex after copying the folders.
+The first run waits for approval. Repeat it with `--approve --resume` after approval.
 
-## Advanced CLI usage
-
-The conversational Codex workflow is recommended. For direct pipeline control:
+Video:
 
 ```bash
 python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
   --run-name "my-product-ugc" \
   --video "/absolute/path/reference.mp4" \
   --product-image "/absolute/path/product.png" \
-  --person-image "/absolute/path/person.jpg" \
-  --copy-file "/absolute/path/copy.txt" \
-  --product-info "Verified product facts and constraints" \
+  --brand-profile-file "/absolute/path/profile.json" \
+  --brand-product-id "<product-id>" \
+  --product-info "Verified product facts and restrictions" \
   --resolution "2K"
 ```
 
-For a manual installation, replace `.agents/skills` with `.codex/skills`.
-Omit optional arguments when you do not have those inputs. If a run is interrupted,
-repeat the same command with `--resume`. Existing task IDs are polled rather than
-submitted again.
-
 ## Development
-
-Run the test suite from the repository root:
 
 ```bash
 PYTHONPATH=. uv run --with pytest pytest -q
@@ -222,17 +186,18 @@ PYTHONPATH=. uv run --with pytest pytest -q
 Repository layout:
 
 ```text
-ugc-storyboard/  Main workflow skill
-image-generator/ Image-generation adapter
-tests/           Contract, state, media, and offline end-to-end tests
-examples/        Licensed or source-documented example inputs
-docs/            API compatibility notes
+ask-brand/        Unified diagnosis and orchestration
+brand-profile/    Multi-brand, multi-product profiles
+ugc-image-post/   Planning, generation, composition, QA, and resume
+ugc-storyboard/   Seven-stage video storyboard workflow
+image-generator/  EvoLink image-generation adapter
+tests/            Contract, CLI, resume, and offline end-to-end tests
+examples/         Licensed or source-documented fixtures
+docs/             API compatibility notes
 ```
 
 ## License
 
-The original project code is available under the [MIT License](LICENSE).
-
-Adapted workflow ideas and controlled vocabularies retain their upstream licenses.
-See [`ugc-storyboard/THIRD_PARTY_NOTICES.md`](ugc-storyboard/THIRD_PARTY_NOTICES.md) and
-[`ugc-storyboard/licenses/`](ugc-storyboard/licenses/) for details.
+Original project code is available under the [MIT License](LICENSE). Adapted material
+retains its upstream licenses; see
+[`ugc-storyboard/THIRD_PARTY_NOTICES.md`](ugc-storyboard/THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImagePostVisualQA",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pass", "issues"],
+  "properties": {
+    "pass": {"type": "boolean"},
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["page_index", "severity", "correction_prompt"],
+        "properties": {
+          "page_index": {"type": "integer", "minimum": 1, "maximum": 9},
+          "severity": {
+            "type": "string",
+            "enum": ["minor", "major", "critical"]
+          },
+          "description": {"type": "string"},
+          "correction_prompt": {"type": "string"}
+        }
+      }
+    }
+  }
+}

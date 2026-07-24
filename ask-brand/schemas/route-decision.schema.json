@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AskBrandRouteDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "intent",
+    "recommended_skill",
+    "reason",
+    "missing_inputs",
+    "question"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "status": {
+      "type": "string",
+      "enum": ["ready", "needs_input", "needs_confirmation"]
+    },
+    "intent": {"type": "string", "minLength": 1},
+    "recommended_skill": {
+      "type": "string",
+      "enum": ["", "ask-brand", "brand-profile", "ugc-image-post", "ugc-storyboard"]
+    },
+    "reason": {"type": "string", "minLength": 1},
+    "missing_inputs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "question": {"type": "string"}
+  }
+}

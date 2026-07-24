@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ask Brand"
+  short_description: "诊断品牌营销需求并编排图文、短视频和品牌档案生产工作流"
+  default_prompt: "Use $ask-brand to diagnose my marketing request and route it to the right brand content workflow."

@@ -1,6 +1,6 @@
 ---
 name: ugc-storyboard
-description: Generate a final 12-panel brand UGC storyboard image and a production-ready 15-second Seedance prompt from a benchmark video, product image, optional person image, copy, and product notes. Use when Codex needs to analyze or adapt a 品牌 UGC 短视频、生成十二宫格分镜、替换商品或人物、运行 EvoLink 多模态分析和生图流程，或继续一个中断的分镜任务。
+description: Generate a final 12-panel brand UGC storyboard image and a production-ready 15-second Seedance prompt from a benchmark video, product image, optional person image, copy, product notes, and optional brand profile. Use when Codex needs to analyze or adapt a 品牌 UGC 短视频、生成十二宫格分镜、替换商品或人物、应用品牌档案、运行 EvoLink 多模态分析和生图流程，或继续一个中断的分镜任务。
 ---
 
 # UGC 分镜生成
@@ -26,6 +26,7 @@ description: Generate a final 12-panel brand UGC storyboard image and a producti
 - 人物图：选填；提供时锁定人物一致性。
 - 文案文件：选填。
 - 产品信息：建议提供，只使用用户文字和产品图中直接可见的事实。
+- 品牌档案：选填；补充品牌语气、视觉约束、已核实事实和禁用表达。
 
 ## 运行
 
@@ -38,6 +39,8 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
   --product-image "<product.png>" \
   --person-image "<optional_person.jpg>" \
   --copy-file "<optional_copy.txt>" \
+  --brand-profile-file "<optional_brand_profile.json>" \
+  --brand-product-id "<optional_product_id>" \
   --product-info "<产品名称、可验证卖点和限制>" \
   --resolution "2K"
 ```
@@ -51,12 +54,17 @@ python "$env:USERPROFILE\.agents\skills\ugc-storyboard\scripts\run_public_pipeli
   --product-image "<product.png>" `
   --person-image "<optional_person.jpg>" `
   --copy-file "<optional_copy.txt>" `
+  --brand-profile-file "<optional_brand_profile.json>" `
+  --brand-product-id "<optional_product_id>" `
   --product-info "<产品名称、可验证卖点和限制>" `
   --resolution "2K"
 ```
 
 同名运行已存在时不要覆盖。显式添加 `--resume` 后，仅继续未完成阶段；
 已有 EvoLink 图片任务 ID 时只轮询，不重新提交。
+
+品牌档案只有一个产品时可以省略 `--brand-product-id`。未提供品牌档案时行为与
+原流程完全一致；提供档案时，本次产品信息优先，档案补充长期约束但不会被写回。
 
 默认把任务的全部数据保存在当前项目的 `.brand_ugc/<run_name>/`，包括输入副本、
 中间产物、生成结果、QA、进度和断点状态。不要在该目录之外创建品牌 UGC 任务

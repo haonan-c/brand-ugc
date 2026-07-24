@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BrandProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "brand_id", "brand_name", "products"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "brand_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "brand_name": {"type": "string", "minLength": 1},
+    "audiences": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "voice": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "traits": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "preferred_terms": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "prohibited_terms": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "visual": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "colors": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}
+        },
+        "fonts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "logo": {"type": "string", "minLength": 1},
+        "corner_radius": {"type": "string", "enum": ["none", "small", "medium", "large"]}
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prohibited_claims": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ctas": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "hashtags": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product_id", "name"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "name": {"type": "string", "minLength": 1},
+          "images": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "verified_claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["claim", "evidence"],
+              "properties": {
+                "claim": {"type": "string", "minLength": 1},
+                "evidence": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "target_audiences": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "use_cases": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "prohibited_expressions": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}

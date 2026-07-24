@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "layouts": [
+    "cover-title",
+    "product-hero",
+    "statement",
+    "bullet-list",
+    "steps",
+    "comparison",
+    "detail-callout",
+    "summary-cta"
+  ],
+  "default_page_count": 6,
+  "minimum_page_count": 4,
+  "maximum_page_count": 9,
+  "aspect_ratio": "3:4",
+  "default_resolution": "2K"
+}

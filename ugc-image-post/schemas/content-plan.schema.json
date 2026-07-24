@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImagePostContentPlan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adaptation_summary",
+    "title_options",
+    "selected_title",
+    "body_copy",
+    "hashtags",
+    "cta",
+    "facts_used",
+    "needs_confirmation",
+    "pages"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "adaptation_summary": {"type": "string", "minLength": 1},
+    "title_options": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "selected_title": {"type": "string", "minLength": 1},
+    "body_copy": {"type": "string", "minLength": 1},
+    "hashtags": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "cta": {"type": "string"},
+    "facts_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact", "source", "evidence"],
+        "properties": {
+          "fact": {"type": "string", "minLength": 1},
+          "source": {
+            "type": "string",
+            "enum": ["brand_profile", "user_provided", "product_image_visible"]
+          },
+          "evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "needs_confirmation": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "role",
+          "layout",
+          "headline",
+          "body",
+          "emphasis",
+          "visual_prompt",
+          "product_mode",
+          "fact_refs"
+        ],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1, "maximum": 9},
+          "role": {"type": "string", "minLength": 1},
+          "layout": {
+            "type": "string",
+            "enum": [
+              "cover-title",
+              "product-hero",
+              "statement",
+              "bullet-list",
+              "steps",
+              "comparison",
+              "detail-callout",
+              "summary-cta"
+            ]
+          },
+          "headline": {"type": "string"},
+          "body": {"type": "string"},
+          "emphasis": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "visual_prompt": {"type": "string", "minLength": 1},
+          "product_mode": {
+            "type": "string",
+            "enum": ["real_composite", "ai_interaction", "none"]
+          },
+          "fact_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}
