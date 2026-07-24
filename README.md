@@ -23,6 +23,37 @@ This repository contains five composable Codex Skills:
 > The image-post workflow creates publishable candidates but does not post them.
 > The video workflow creates storyboards and prompts but does not render the final MP4.
 
+## How it works
+
+The suite separates deciding what to make, storing verified brand facts, producing
+content, and calling image-generation services. You can start from one router or
+invoke a production Skill directly when the target format is already clear.
+
+```mermaid
+flowchart LR
+    U["Marketing request and local assets"] --> A["ask-brand<br/>Diagnosis and routing"]
+    A --> P["brand-profile<br/>Create or resolve a profile"]
+    A --> I["ugc-image-post<br/>Image-post production"]
+    A --> V["ugc-storyboard<br/>Video storyboard"]
+    P -. "Brand rules and verified facts" .-> I
+    P -. "Brand rules and verified facts" .-> V
+    I --> G["image-generator<br/>Shared generation capability"]
+    V --> G
+    I --> DI["Image-post candidate + QA"]
+    V --> DV["12-panel board + Seedance prompt"]
+```
+
+| Type | Skill | When to use it |
+| --- | --- | --- |
+| Unified entry | `ask-brand` | The request or assets are unclear, or you need to choose image post versus video |
+| Brand context | `brand-profile` | Create, update, or select reusable brand and product facts |
+| Production entry | `ugc-image-post` | The request is clearly a benchmark image-post transfer |
+| Production entry | `ugc-storyboard` | The request is clearly a benchmark video storyboard |
+| Shared capability | `image-generator` | Called by production Skills; usually not invoked directly |
+
+The operating rules are simple: choose one production path at a time, approve the
+plan before paid generation, keep claims traceable, and save resumable state locally.
+
 ## Quickstart
 
 ### 1. Requirements
@@ -77,6 +108,36 @@ I uploaded:
 ```
 
 You can invoke either production Skill directly when the desired format is clear.
+
+## Recommended workflow
+
+### First-time setup
+
+1. Install all five Skills and verify the local dependencies for the intended path.
+2. Configure an EvoLink API key; an offline image-post demo can run without one.
+3. Optionally use `$brand-profile` to save voice, prohibited language, product facts, and evidence.
+4. Prepare one task's assets. Do not mix image-post and video benchmarks in one production run.
+5. Start from `$ask-brand` when the path is unclear, or invoke a production Skill directly.
+
+### Every content run
+
+1. **Diagnose:** confirm the format, brand or product, required assets, and missing input.
+2. **Plan:** analyze the benchmark's method and create an original branded plan.
+3. **Approve:** review structure, copy direction, and facts before paid generation.
+4. **Produce:** generate and compose image-post pages or create the video storyboard.
+5. **QA:** check facts, brand consistency, visual integrity, and set coherence; retry within limits.
+6. **Deliver:** save candidates, structured data, previews, and QA locally.
+
+An online image-post run moves through these states:
+
+| State | Meaning | Next action |
+| --- | --- | --- |
+| `awaiting_approval` | The plan is saved and no generation API was called | Approve, then continue with `--approve --resume` |
+| `awaiting_visual_qa` | Online generation and local composition are complete | Inspect every page and submit visual QA |
+| `completed` | Visual QA passed and deliverables were collected | Use the files in `deliverables/` |
+
+If a command returns an error, fix the input, dependency, or generation problem.
+Resume the existing run only when its inputs have not changed; otherwise start a new run.
 
 ## Image-post workflow
 
@@ -164,6 +225,17 @@ python3 ~/.agents/skills/ugc-image-post/scripts/run_pipeline.py \
 
 The first run waits for approval. Repeat it with `--approve --resume` after approval.
 
+After online generation, Codex inspects every page and creates a visual QA file.
+Repeat the same command with:
+
+```text
+--visual-qa-file "/absolute/path/visual-qa.json" --approve --resume
+```
+
+To recover an interrupted run, keep the same `--run-name` and original inputs, then
+use `--resume`. Use a new run name when changing the benchmark, product, or content
+plan so that two runs do not share state.
+
 Video:
 
 ```bash
@@ -176,6 +248,56 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
   --product-info "Verified product facts and restrictions" \
   --resolution "2K"
 ```
+
+## Local data and deliverables
+
+```text
+.brand_ugc/
+├── brands/<brand-id>/profile.json
+├── drafts/<run-name>/content-plan.json
+└── <run-name>/
+    ├── inputs/          Pinned inputs and manifest
+    ├── outputs/         Content plan and intermediate output
+    ├── images/          Base, product, and composed images
+    ├── state/           Run state and request budget
+    └── deliverables/    Final images, copy, JSON, preview, and QA
+```
+
+Runs do not overwrite unrelated task directories by default. Share `deliverables/`
+rather than publishing a whole run directory that may contain source assets, state,
+or local secret paths.
+
+## Troubleshooting
+
+**Why did the first run create no images?**
+
+Stopping at `awaiting_approval` is expected. The first run only pins inputs and
+presents the content plan; paid requests begin after approval.
+
+**Why are the images ready while the run is not complete?**
+
+Online runs require group visual QA. At `awaiting_visual_qa`, ask Codex to inspect
+the pages and resume with the QA file. Only a passing report reaches `completed`.
+
+**Can I work without a brand profile?**
+
+Yes. Brand details supplied in the task become temporary context and are not
+silently written to a long-lived profile.
+
+**Why does the workflow ask me to select a product?**
+
+When a profile contains multiple products, a `product-id` is required to prevent
+facts and assets from different products from being mixed.
+
+**Why do Chinese characters render as boxes, or why does ImageMagick fail?**
+
+Install Noto Sans CJK SC or another supported CJK font and verify `magick -version`.
+For video-analysis failures, also verify `ffmpeg` and `ffprobe`.
+
+**Can the workflow publish directly to Xiaohongshu or another platform?**
+
+No. It produces candidates and QA only; account login, automated publishing, and
+platform scraping are outside the current scope.
 
 ## Development
 
