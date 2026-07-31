@@ -10,8 +10,9 @@
 
 从统一入口诊断品牌营销需求，把对标视频或对标图文迁移为品牌专属内容。
 
-这个仓库包含六个可以组合安装的 Codex Skill：
+这个仓库包含七个可以组合安装的 Agent Skill，Codex 和 Claude Code 都可以直接使用：
 
+- `setup-brand-ugc`：检查本地依赖、已安装 Skill 和凭证状态，引导完成首次设置。
 - `ask-brand`：诊断需求、检查素材并路由到正确工作流。
 - `xhs-topic-radar`：发现小红书需求语言，生成带证据的每日选题策略卡。
 - `brand-profile`：维护本地多品牌、多产品档案和已核实事实。
@@ -49,6 +50,7 @@ flowchart LR
 
 | 类型 | Skill | 什么时候使用 |
 | --- | --- | --- |
+| 初始化 | `setup-brand-ugc` | 第一次安装后运行，检查依赖并配置 EvoLink、TikHub 凭证 |
 | 统一入口 | `ask-brand` | 需求还比较宽泛、素材不确定，或需要判断先研究、做图文还是视频 |
 | 研究入口 | `xhs-topic-radar` | 发现需求词并生成带证据的小红书选题策略卡 |
 | 品牌上下文 | `brand-profile` | 创建、更新或选择可复用的品牌与产品事实 |
@@ -63,7 +65,8 @@ flowchart LR
 
 ### 1. 运行条件
 
-- [Codex](https://openai.com/codex/)
+- [Codex](https://openai.com/codex/) 或 [Claude Code](https://code.claude.com/)；
+  评估阶段的 Pi Agent 路径需要 `@earendil-works/pi-coding-agent`
 - Node.js 与 `npx`；选题雷达要求 Node.js `>=22.5.0`，其他路径只在一键安装时使用 Node
 - Python 3.10 或更高版本
 - 图文路径：ImageMagick，以及 Noto Sans CJK SC、苹方或微软雅黑字体
@@ -82,9 +85,13 @@ ffprobe -version
 
 ### 2. 一条命令安装全部 Skill
 
+根据你使用的 Agent 选择对应命令。
+
+**Codex**
+
 ```bash
 npx -y skills@latest add haonan-c/brand-ugc \
-  --skill ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
+  --skill setup-brand-ugc ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
   --agent codex --global --yes
 ```
 
@@ -94,9 +101,57 @@ npx -y skills@latest add haonan-c/brand-ugc \
 npx -y skills@latest list --global --agent codex
 ```
 
-### 3. 配置 EvoLink
+**Claude Code**
 
-推荐设置：
+```bash
+npx -y skills@latest add haonan-c/brand-ugc \
+  --skill setup-brand-ugc ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
+  --agent claude-code --global --yes
+```
+
+新建一个 Claude Code 会话，然后确认安装：
+
+```bash
+npx -y skills@latest list --global --agent claude-code
+```
+
+**Pi Agent**（评估阶段，详见 [`docs/pi-agent-driver-evaluation.md`](docs/pi-agent-driver-evaluation.md)）
+
+```bash
+npm install -g @earendil-works/pi-coding-agent@0.82.1
+npx -y skills@latest add haonan-c/brand-ugc \
+  --skill setup-brand-ugc ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
+  --agent pi --global --yes
+```
+
+确认安装：
+
+```bash
+npx -y skills@latest list --global --agent pi
+```
+
+请锁定上面这个 `pi-coding-agent` 版本号，不要用 `@latest`——评估文档里的兼容性结论
+是基于这个版本得出的，包本身还是 `0.x`。Pi 目前是作为 brand-ugc 自有运营工作台的
+底层 Agent Driver 在评估（见
+[ADR 0003](docs/adr/0003-pi-agent-is-the-autonomous-controller.md)），还不是正式的
+生产安装方式，请当作 PoC 路径，不是默认推荐。
+
+去掉上面任意命令里的 `--global`，可以只安装到当前项目（Claude Code 写入
+`.claude/skills/`，Pi 写入 `.pi/skills/`），而不是用户级目录。三种 Agent 使用的
+SKILL.md 完全一致，不需要做任何改动。
+
+> 在 Claude Code 里，Skill 会根据 `description` 自动匹配，所以你可以直接用自然语言
+> 描述任务，或者说"使用 ask-brand 这个 skill"。Pi 同样不保证每次都会自动读取完整的
+> Skill 内容；需要明确触发某个 Skill 时，用 `/skill:ask-brand` 这类写法显式调用。
+> 下文示例里的 `$skill-name` 写法是 Codex 自己的调用语法。
+
+### 3. 运行初始化设置
+
+推荐直接使用 `$setup-brand-ugc`：它会自动检查 Python、Node.js、ImageMagick、中文字体、
+FFmpeg/FFprobe 是否齐全，列出缺失依赖对应的安装命令，并引导配置 EvoLink 和 TikHub Key，
+不需要自己逐条对照文档。
+
+也可以手动配置 EvoLink：
 
 ```bash
 export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
@@ -129,8 +184,8 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 
 ### 第一次使用
 
-1. 安装六个 Skill，并确认目标路径所需的本地依赖。
-2. 选题研究配置 TikHub Key，在线生图配置 EvoLink Key；仅离线演示图文流程时可以暂不配置 EvoLink。
+1. 安装七个 Skill，运行 `$setup-brand-ugc` 检查目标路径所需的本地依赖。
+2. 用 `$setup-brand-ugc` 引导配置 TikHub Key（选题研究）和 EvoLink Key（在线生图）；仅离线演示图文流程时可以暂不配置 EvoLink。
 3. 可选：用 `$brand-profile` 建立品牌语气、禁用表达、产品事实和证据。
 4. 整理一组任务素材。图文和视频对标素材不要混在一次生产任务里。
 5. 不确定路径时从 `$ask-brand` 开始；目标明确时直接调用生产 Skill。
@@ -154,6 +209,20 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 
 如果命令返回错误，先修正输入、依赖或生成问题；输入未改变时可恢复原任务，输入已经
 改变时应新建任务。
+
+## 初始化设置
+
+第一次安装或更换电脑后，使用 `$setup-brand-ugc`：
+
+```text
+请使用 $setup-brand-ugc 帮我检查依赖并配置这次要用的凭证。
+
+这次准备使用：图文（或短视频 / 选题雷达 / 全部）。
+```
+
+它只做检查、报告和引导，不生成内容、不调用付费 API：先问清楚这次要用哪条路径，
+再只检查该路径需要的系统依赖，报告六个 Skill 的安装状态，并引导配置 EvoLink 或
+TikHub 凭证。全程不会要求把真实 Key 粘贴进聊天记录。
 
 ## 选题雷达路径
 
@@ -317,7 +386,13 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
 **中文排版显示方框或 ImageMagick 报错怎么办？**
 
 安装 Noto Sans CJK SC、苹方或微软雅黑字体，并确认 `magick -version` 可以正常
-执行。视频解析失败时同样检查 `ffmpeg` 和 `ffprobe`。
+执行。视频解析失败时同样检查 `ffmpeg` 和 `ffprobe`。用 `$setup-brand-ugc` 可以
+一次性检查这几项并给出对应安装命令，不用逐条手动确认。
+
+**第一次安装要自己挨个装依赖、配 Key 吗？**
+
+不用手动摸索。安装 Skill 之后先运行 `$setup-brand-ugc`，它会检查依赖、报告缺失
+项和安装命令，并引导配置 EvoLink、TikHub 凭证；不需要的路径不会被要求配置。
 
 **可以直接发布到小红书或其他平台吗？**
 
@@ -332,6 +407,7 @@ PYTHONPATH=. uv run --with pytest pytest -q
 仓库结构：
 
 ```text
+setup-brand-ugc/  依赖检查与首次凭证配置引导
 ask-brand/        统一诊断与编排入口
 xhs-topic-radar/  小红书需求发现与选题策略报告
 brand-profile/    多品牌、多产品档案

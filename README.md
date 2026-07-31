@@ -11,8 +11,9 @@
 Diagnose a brand marketing request from one entry point, then turn a benchmark
 video or image post into brand-specific content.
 
-This repository contains six composable Codex Skills:
+This repository contains seven composable Agent Skills, ready to use in both Codex and Claude Code:
 
+- `setup-brand-ugc` checks local dependencies, installed Skills, and credential status, then guides first-time setup.
 - `ask-brand` diagnoses the request, checks assets, and routes one workflow.
 - `xhs-topic-radar` discovers Xiaohongshu demand language and produces evidence-backed daily topic strategy cards.
 - `brand-profile` maintains reusable local profiles for multiple brands and products.
@@ -50,6 +51,7 @@ flowchart LR
 
 | Type | Skill | When to use it |
 | --- | --- | --- |
+| Setup | `setup-brand-ugc` | Run once after installing, to check dependencies and configure EvoLink/TikHub credentials |
 | Unified entry | `ask-brand` | The request or assets are unclear, or you need to choose research, image post, or video |
 | Research entry | `xhs-topic-radar` | Discover demand terms and create evidence-backed Xiaohongshu topic strategy cards |
 | Brand context | `brand-profile` | Create, update, or select reusable brand and product facts |
@@ -64,7 +66,8 @@ plan before paid generation, keep claims traceable, and save resumable state loc
 
 ### 1. Requirements
 
-- [Codex](https://openai.com/codex/)
+- [Codex](https://openai.com/codex/) or [Claude Code](https://code.claude.com/); or
+  `@earendil-works/pi-coding-agent` for the evaluation-stage Pi Agent path
 - Node.js and `npx`; topic radar requires Node.js `>=22.5.0`, while other paths use Node only for installation
 - Python 3.10 or newer
 - Image posts: ImageMagick and a CJK font such as Noto Sans CJK SC
@@ -74,9 +77,13 @@ plan before paid generation, keep claims traceable, and save resumable state loc
 
 ### 2. Install all Skills
 
+Pick the agent you use.
+
+**Codex**
+
 ```bash
 npx -y skills@latest add haonan-c/brand-ugc \
-  --skill ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
+  --skill setup-brand-ugc ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
   --agent codex --global --yes
 ```
 
@@ -86,7 +93,58 @@ Fully restart Codex or open a new task, then verify:
 npx -y skills@latest list --global --agent codex
 ```
 
-### 3. Configure EvoLink
+**Claude Code**
+
+```bash
+npx -y skills@latest add haonan-c/brand-ugc \
+  --skill setup-brand-ugc ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
+  --agent claude-code --global --yes
+```
+
+Start a new Claude Code session, then verify:
+
+```bash
+npx -y skills@latest list --global --agent claude-code
+```
+
+**Pi Agent** (evaluation stage — see [`docs/pi-agent-driver-evaluation.md`](docs/pi-agent-driver-evaluation.md))
+
+```bash
+npm install -g @earendil-works/pi-coding-agent@0.82.1
+npx -y skills@latest add haonan-c/brand-ugc \
+  --skill setup-brand-ugc ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
+  --agent pi --global --yes
+```
+
+Verify:
+
+```bash
+npx -y skills@latest list --global --agent pi
+```
+
+Pin the exact `pi-coding-agent` version above; the package is still `0.x` and the
+evaluation doc's compatibility notes assume this version. Pi is being evaluated as the
+driver behind brand-ugc's own operations workbench (see
+[ADR 0003](docs/adr/0003-pi-agent-is-the-autonomous-controller.md)), not yet a
+production install target — treat it as a PoC path, not the default recommendation.
+
+Drop `--global` from any of the commands above to install into the current project
+only (`.claude/skills/`, or `.pi/skills/` for Pi) instead of user-level. The SKILL.md
+files are identical across all three agents; no adaptation is needed.
+
+> In Claude Code, Skills are matched automatically from their `description`, so you
+> can just describe the task in plain language, or say "use the ask-brand skill".
+> Pi does not always read a Skill's full body automatically either; when you need a
+> specific one to run, trigger it explicitly (`/skill:ask-brand`, etc.). The
+> `$skill-name` shorthand in the examples below is Codex's own invocation syntax.
+
+### 3. Run first-time setup
+
+Use `$setup-brand-ugc`: it checks whether Python, Node.js, ImageMagick, a CJK font, and
+FFmpeg/FFprobe are present, lists install commands for anything missing, and guides
+EvoLink and TikHub credential setup, so you do not have to check each dependency by hand.
+
+You can also configure EvoLink manually:
 
 ```bash
 export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
@@ -120,8 +178,8 @@ You can invoke either production Skill directly when the desired format is clear
 
 ### First-time setup
 
-1. Install all six Skills and verify the local dependencies for the intended path.
-2. Configure a TikHub key for topic research and an EvoLink key for online generation; an offline image-post demo can run without EvoLink.
+1. Install all seven Skills, then run `$setup-brand-ugc` to verify the local dependencies for the intended path.
+2. Use `$setup-brand-ugc` to configure a TikHub key for topic research and an EvoLink key for online generation; an offline image-post demo can run without EvoLink.
 3. Optionally use `$brand-profile` to save voice, prohibited language, product facts, and evidence.
 4. Prepare one task's assets. Do not mix image-post and video benchmarks in one production run.
 5. Start from `$ask-brand` when the path is unclear, or invoke a production Skill directly.
@@ -145,6 +203,21 @@ An online image-post run moves through these states:
 
 If a command returns an error, fix the input, dependency, or generation problem.
 Resume the existing run only when its inputs have not changed; otherwise start a new run.
+
+## First-time setup workflow
+
+After installing, or on a new machine, use `$setup-brand-ugc`:
+
+```text
+Use $setup-brand-ugc to check dependencies and configure the credentials I need this time.
+
+I plan to use: image post (or short video / topic radar / all of them).
+```
+
+It only checks, reports, and guides — it never produces content or calls a paid API. It
+asks which path you intend to use, checks only the system dependencies that path needs,
+reports which of the six production Skills are installed, and guides EvoLink or TikHub
+credential setup. It never asks you to paste a real key into chat.
 
 ## Topic-radar workflow
 
@@ -313,7 +386,14 @@ facts and assets from different products from being mixed.
 **Why do Chinese characters render as boxes, or why does ImageMagick fail?**
 
 Install Noto Sans CJK SC or another supported CJK font and verify `magick -version`.
-For video-analysis failures, also verify `ffmpeg` and `ffprobe`.
+For video-analysis failures, also verify `ffmpeg` and `ffprobe`. Run `$setup-brand-ugc`
+to check all of these at once and get the matching install commands.
+
+**Do I have to install dependencies and configure keys by hand on first run?**
+
+No. After installing the Skills, run `$setup-brand-ugc` first. It checks dependencies,
+reports what is missing with install commands, and guides EvoLink and TikHub credential
+setup; it only asks about the path you actually intend to use.
 
 **Can the workflow publish directly to Xiaohongshu or another platform?**
 
@@ -329,6 +409,7 @@ PYTHONPATH=. uv run --with pytest pytest -q
 Repository layout:
 
 ```text
+setup-brand-ugc/  Dependency checks and first-time credential setup
 ask-brand/        Unified diagnosis and orchestration
 xhs-topic-radar/  Xiaohongshu demand discovery and topic strategy reports
 brand-profile/    Multi-brand, multi-product profiles
