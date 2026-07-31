@@ -1,0 +1,4 @@
+interface:
+  display_name: "brand-ugc 初始化设置"
+  short_description: "检查系统依赖、已安装 Skill 和凭证状态，引导完成首次配置"
+  default_prompt: "Use $setup-brand-ugc to check local dependencies and guide first-time credential setup for brand-ugc."
