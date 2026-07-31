@@ -1,0 +1,13 @@
+{
+  "code": 200,
+  "data": {
+    "data": {
+      "search_cpl_id": "test",
+      "sug_items": [
+        { "text": "软著申请流程", "search_type": "notes" },
+        { "text": "软著代理", "search_type": "notes" },
+        { "text": "软著申请流程", "search_type": "notes" }
+      ]
+    }
+  }
+}

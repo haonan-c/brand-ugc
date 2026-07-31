@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "XhsTopicRadarCandidates",
+  "type": "array",
+  "minItems": 10,
+  "maxItems": 10,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "audience",
+      "title",
+      "whyNow",
+      "userQuestion",
+      "targetScenario",
+      "angle",
+      "contentGap",
+      "evidenceSummary",
+      "titleAlternatives",
+      "contentFormat",
+      "contentStructure",
+      "titlePattern",
+      "writingFramework",
+      "hook",
+      "mustCover",
+      "outline",
+      "callToAction",
+      "demandKeywords",
+      "priority",
+      "difficulty",
+      "scoreBreakdown",
+      "score",
+      "riskNote",
+      "doNotSay",
+      "sourceUrls"
+    ],
+    "properties": {
+      "audience": {"type": "string", "minLength": 1},
+      "title": {"type": "string", "minLength": 6},
+      "whyNow": {"type": "string", "minLength": 10},
+      "userQuestion": {"type": "string", "minLength": 4},
+      "targetScenario": {"type": "string", "minLength": 6},
+      "angle": {"type": "string", "minLength": 8},
+      "contentGap": {"type": "string", "minLength": 8},
+      "evidenceSummary": {"type": "string", "minLength": 12},
+      "titleAlternatives": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 4,
+        "items": {"type": "string", "minLength": 6}
+      },
+      "contentFormat": {"type": "string", "minLength": 2},
+      "contentStructure": {
+        "type": "string",
+        "enum": ["listicle", "tutorial", "review", "comparison", "experience-share", "product-rec", "knowledge", "news-update"]
+      },
+      "titlePattern": {
+        "type": "string",
+        "enum": ["number", "question", "pain-point", "result", "urgency", "authority"]
+      },
+      "writingFramework": {
+        "type": "string",
+        "enum": ["listicle-authority", "tutorial-stepbystep", "experience-storytelling", "comparison-matrix"]
+      },
+      "hook": {"type": "string", "minLength": 8},
+      "mustCover": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 6,
+        "items": {"type": "string", "minLength": 2}
+      },
+      "outline": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 7,
+        "items": {"type": "string", "minLength": 4}
+      },
+      "callToAction": {"type": "string", "minLength": 6},
+      "demandKeywords": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 3,
+        "items": {"type": "string", "minLength": 2}
+      },
+      "priority": {"type": "string", "enum": ["high", "medium", "low"]},
+      "difficulty": {"type": "string", "enum": ["easy", "medium", "hard"]},
+      "scoreBreakdown": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["demandFit", "evidenceStrength", "timingFit", "differentiation", "executability", "riskSafety"],
+        "properties": {
+          "demandFit": {"type": "integer", "minimum": 0, "maximum": 100},
+          "evidenceStrength": {"type": "integer", "minimum": 0, "maximum": 100},
+          "timingFit": {"type": "integer", "minimum": 0, "maximum": 100},
+          "differentiation": {"type": "integer", "minimum": 0, "maximum": 100},
+          "executability": {"type": "integer", "minimum": 0, "maximum": 100},
+          "riskSafety": {"type": "integer", "minimum": 0, "maximum": 100}
+        }
+      },
+      "score": {"type": "integer", "minimum": 0, "maximum": 100},
+      "riskNote": {"type": "string", "minLength": 8},
+      "doNotSay": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 4,
+        "items": {"type": "string", "minLength": 4}
+      },
+      "sourceUrls": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 5,
+        "items": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

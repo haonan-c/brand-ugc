@@ -11,9 +11,10 @@
 Diagnose a brand marketing request from one entry point, then turn a benchmark
 video or image post into brand-specific content.
 
-This repository contains five composable Codex Skills:
+This repository contains six composable Codex Skills:
 
 - `ask-brand` diagnoses the request, checks assets, and routes one workflow.
+- `xhs-topic-radar` discovers Xiaohongshu demand language and produces evidence-backed daily topic strategy cards.
 - `brand-profile` maintains reusable local profiles for multiple brands and products.
 - `ugc-image-post` creates Xiaohongshu-style image-post candidates, copy, previews, and QA.
 - `ugc-storyboard` creates 12-panel video storyboards and Seedance prompts.
@@ -32,9 +33,13 @@ invoke a production Skill directly when the target format is already clear.
 ```mermaid
 flowchart LR
     U["Marketing request and local assets"] --> A["ask-brand<br/>Diagnosis and routing"]
+    A --> T["xhs-topic-radar<br/>Demand and topic research"]
     A --> P["brand-profile<br/>Create or resolve a profile"]
     A --> I["ugc-image-post<br/>Image-post production"]
     A --> V["ugc-storyboard<br/>Video storyboard"]
+    T --> S["User-selected strategy card"]
+    S -. "Separate approved production run" .-> I
+    S -. "Separate approved production run" .-> V
     P -. "Brand rules and verified facts" .-> I
     P -. "Brand rules and verified facts" .-> V
     I --> G["image-generator<br/>Shared generation capability"]
@@ -45,7 +50,8 @@ flowchart LR
 
 | Type | Skill | When to use it |
 | --- | --- | --- |
-| Unified entry | `ask-brand` | The request or assets are unclear, or you need to choose image post versus video |
+| Unified entry | `ask-brand` | The request or assets are unclear, or you need to choose research, image post, or video |
+| Research entry | `xhs-topic-radar` | Discover demand terms and create evidence-backed Xiaohongshu topic strategy cards |
 | Brand context | `brand-profile` | Create, update, or select reusable brand and product facts |
 | Production entry | `ugc-image-post` | The request is clearly a benchmark image-post transfer |
 | Production entry | `ugc-storyboard` | The request is clearly a benchmark video storyboard |
@@ -59,17 +65,18 @@ plan before paid generation, keep claims traceable, and save resumable state loc
 ### 1. Requirements
 
 - [Codex](https://openai.com/codex/)
-- Node.js and `npx`, required only for one-command installation
+- Node.js and `npx`; topic radar requires Node.js `>=22.5.0`, while other paths use Node only for installation
 - Python 3.10 or newer
 - Image posts: ImageMagick and a CJK font such as Noto Sans CJK SC
 - Video: FFmpeg and FFprobe
+- Topic radar: a user-owned [TikHub API Key](https://api.tikhub.io/)
 - Online generation: an [EvoLink API Key](https://evolink.ai/dashboard/keys)
 
 ### 2. Install all Skills
 
 ```bash
 npx -y skills@latest add haonan-c/brand-ugc \
-  --skill ask-brand brand-profile ugc-image-post ugc-storyboard image-generator \
+  --skill ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
   --agent codex --global --yes
 ```
 
@@ -113,8 +120,8 @@ You can invoke either production Skill directly when the desired format is clear
 
 ### First-time setup
 
-1. Install all five Skills and verify the local dependencies for the intended path.
-2. Configure an EvoLink API key; an offline image-post demo can run without one.
+1. Install all six Skills and verify the local dependencies for the intended path.
+2. Configure a TikHub key for topic research and an EvoLink key for online generation; an offline image-post demo can run without EvoLink.
 3. Optionally use `$brand-profile` to save voice, prohibited language, product facts, and evidence.
 4. Prepare one task's assets. Do not mix image-post and video benchmarks in one production run.
 5. Start from `$ask-brand` when the path is unclear, or invoke a production Skill directly.
@@ -138,6 +145,16 @@ An online image-post run moves through these states:
 
 If a command returns an error, fix the input, dependency, or generation problem.
 Resume the existing run only when its inputs have not changed; otherwise start a new run.
+
+## Topic-radar workflow
+
+Use `$xhs-topic-radar` when you need evidence-backed directions before producing a post. It asks for an industry and lookback period, spends only the bounded autocomplete preview first, and stops for explicit approval before note/comment collection. The default software-copyright run is capped at 27 TikHub business requests and US$0.30.
+
+Each final strategy card includes audience, target scenario, sample-relative rationale, concrete evidence interpretation, exact Xiaohongshu source URLs, autocomplete demand language, title and writing frameworks, hook, outline, CTA, six-part weighted scoring, and policy/claim guardrails. Reports are saved under `.brand_ugc/topic-radar/reports/`.
+
+A single search snapshot is not precise search volume or proof of a platform-wide trend. Social posts are not policy authority. After the report is complete, select one card before starting a separate image-post or storyboard run.
+
+See [`docs/xhs-topic-radar.md`](docs/xhs-topic-radar.md) for CLI, credentials, cost controls, and local state.
 
 ## Image-post workflow
 
@@ -194,6 +211,7 @@ the saved profile. Every verified claim must include evidence.
 
 | Path | Required input | Main output |
 | --- | --- | --- |
+| Topic radar | Industry, lookback period, TikHub key, explicit collection approval | 10 evidence-backed strategy cards, Markdown/JSON report, local evidence pack |
 | Image post | 1–9 benchmark images, benchmark copy, product image | 4–9 3:4 pages, three titles, copy, preview, JSON, QA |
 | Video | Benchmark video, product image | 2K storyboard, Seedance prompt, 12 motion instructions, QA |
 | Brand profile | Brand ID, brand name, products | Reusable `profile.json` and resolved task context |
@@ -202,6 +220,8 @@ Person images, brand profiles, and additional verified facts are optional.
 
 ## Privacy, cost, and quality
 
+- Topic radar performs a three-request autocomplete preview first and requires explicit approval before the remaining bounded TikHub collection.
+- Topic evidence and reports remain local; exact note URLs are preserved for traceability.
 - Original video stays local; only a derived proxy and optional mono audio are analyzed remotely.
 - Benchmark post images are not sent as online generation references; product references are sent only for interaction pages.
 - Logs must not contain API keys, authorization headers, Base64, or temporary URLs.
@@ -254,6 +274,7 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
 ```text
 .brand_ugc/
 ├── brands/<brand-id>/profile.json
+├── topic-radar/          Config, raw evidence, SQLite history, pending packs, and reports
 ├── drafts/<run-name>/content-plan.json
 └── <run-name>/
     ├── inputs/          Pinned inputs and manifest
@@ -309,6 +330,7 @@ Repository layout:
 
 ```text
 ask-brand/        Unified diagnosis and orchestration
+xhs-topic-radar/  Xiaohongshu demand discovery and topic strategy reports
 brand-profile/    Multi-brand, multi-product profiles
 ugc-image-post/   Planning, generation, composition, QA, and resume
 ugc-storyboard/   Seven-stage video storyboard workflow

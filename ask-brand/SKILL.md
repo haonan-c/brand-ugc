@@ -1,6 +1,6 @@
 ---
 name: ask-brand
-description: Diagnose a brand marketing request, inspect available local assets, and route it to exactly one brand-profile, ugc-image-post, or ugc-storyboard workflow. Use when users ask broadly for 品牌营销、新品内容、图文还是短视频的选择、营销素材检查、创建品牌档案，或希望从统一入口开始品牌内容生产。
+description: Diagnose a brand marketing request, inspect available local assets, and route it to exactly one xhs-topic-radar, brand-profile, ugc-image-post, or ugc-storyboard workflow. Use when users ask broadly for 小红书选题研究、品牌营销、新品内容、图文还是短视频的选择、营销素材检查、创建品牌档案，或希望从统一入口开始品牌内容生产。
 ---
 
 # Ask Brand
@@ -10,9 +10,11 @@ description: Diagnose a brand marketing request, inspect available local assets,
 
 ## 路由原则
 
+- 用户明确要求选题雷达、每日选题、需求词或话题研究时，直接进入 `xhs-topic-radar`。
 - 用户明确要求图文时，直接进入 `ugc-image-post`。
 - 用户明确要求短视频或分镜时，直接进入 `ugc-storyboard`。
 - 用户明确要求创建或更新品牌档案时，直接进入 `brand-profile`。
+- 同时要求选题研究与成品生产时，只问一个顺序问题；推荐先做选题，再由用户选择策略卡。
 - 需求模糊时给出一个推荐路径，并且一次只问一个关键问题。
 - 不默认同时生成图文和视频。
 - 没有品牌档案时不强制打断；可以使用单次任务信息继续。
@@ -42,6 +44,10 @@ python3 scripts/route_request.py \
 
 ## 编排
 
+### `xhs-topic-radar`
+
+先查询真实搜索联想需求词，在用户明确批准剩余费用后采集笔记与评论，生成带证据和创作结构的策略卡。它不直接生图或发布内容。
+
 ### `brand-profile`
 
 创建、保存或解析品牌和产品档案。任务覆盖不自动写回长期档案。
@@ -55,4 +61,4 @@ python3 scripts/route_request.py \
 需要对标视频和产品图。负责十二宫格分镜和 Seedance 提示词。
 
 路由后遵循下游 Skill 的输入、确认点、费用限制和停止条件。最终汇总下游交付物，
-但不要由 `ask-brand` 直接调用生图 API 或重写下游状态。
+但不要由 `ask-brand` 直接调用 TikHub、生图 API 或重写下游状态。完成选题雷达后，只有用户明确选择策略卡并确认内容形式，才能开启独立的图文或视频生产运行。

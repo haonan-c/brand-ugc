@@ -1,0 +1,55 @@
+{
+  "platform": "xhs",
+  "provider": "tikhub",
+  "industry": "软件著作权代理服务",
+  "lookbackDays": 7,
+  "outputCount": 10,
+  "audienceLabels": {
+    "student": "全国高校大学生",
+    "high_tech_enterprise": "高新技术企业",
+    "hangzhou_e_talent": "杭州E类人才"
+  },
+  "audienceQuotas": {
+    "student": 4,
+    "high_tech_enterprise": 3,
+    "hangzhou_e_talent": 3
+  },
+  "queries": [
+    { "audience": "student", "keyword": "大学生软著" },
+    { "audience": "student", "keyword": "软著加分" },
+    { "audience": "student", "keyword": "软件著作权 创新学分" },
+    { "audience": "student", "keyword": "软件著作权 综测加分" },
+    { "audience": "high_tech_enterprise", "keyword": "高企软著" },
+    { "audience": "high_tech_enterprise", "keyword": "高企知识产权" },
+    { "audience": "high_tech_enterprise", "keyword": "高新技术企业 软件著作权" },
+    { "audience": "hangzhou_e_talent", "keyword": "杭州E类人才" },
+    { "audience": "hangzhou_e_talent", "keyword": "杭州人才认定 软件著作权" }
+  ],
+  "tikhub": {
+    "baseUrl": "https://api.tikhub.io",
+    "maxRequestsPerRun": 27,
+    "maxEstimatedCostUsd": 0.3
+  },
+  "collection": {
+    "suggestionSeeds": [
+      { "audience": "student", "keyword": "软著" },
+      { "audience": "high_tech_enterprise", "keyword": "高企软著" },
+      { "audience": "hangzhou_e_talent", "keyword": "杭州E类人才" }
+    ],
+    "maxSuggestionsPerSeed": 10,
+    "pagesPerQuery": 1,
+    "maxItemsPerQuery": 20,
+    "maxCommentNotes": 15,
+    "maxCommentsPerNote": 20,
+    "maxEvidenceItems": 45,
+    "minRequestIntervalMs": 4000,
+    "commandTimeoutMs": 90000
+  },
+  "history": {
+    "topicDedupDays": 90
+  },
+  "report": {
+    "directory": "reports",
+    "latestFilename": "latest.md"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "platform": "xhs",
+  "tool": "xhs_search_notes",
+  "data": {
+    "items": [
+      {
+        "note_id": "note-1",
+        "note_url": "https://www.xiaohongshu.com/explore/note-1?xsec_token=abc",
+        "display_title": "大学生软著到底能不能加创新学分",
+        "desc": "不同高校规定不同，需要查看本校创新学分文件。",
+        "publish_time": 1785100000,
+        "interact_info": {
+          "liked_count": "1.2万",
+          "collected_count": "830",
+          "comment_count": "126"
+        },
+        "user": { "nickname": "测试作者" }
+      },
+      {
+        "note_id": "note-2",
+        "note_url": "https://www.xiaohongshu.com/explore/note-2?xsec_token=def",
+        "title": "高企申报前如何盘点软件著作权",
+        "description": "企业知识产权与研发项目需要提前整理。",
+        "like_count": 200,
+        "collect_count": 310,
+        "comment_count": 21
+      }
+    ]
+  }
+}

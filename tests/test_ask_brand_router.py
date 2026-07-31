@@ -10,9 +10,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTER = ROOT / "ask-brand" / "scripts" / "route_request.py"
+ROUTE_SCHEMA = ROOT / "ask-brand" / "schemas" / "route-decision.schema.json"
 
 
 class AskBrandRouterTests(unittest.TestCase):
+    def test_route_schema_allows_the_topic_radar_skill(self) -> None:
+        schema = json.loads(ROUTE_SCHEMA.read_text(encoding="utf-8"))
+        allowed = schema["properties"]["recommended_skill"]["enum"]
+        self.assertIn("xhs-topic-radar", allowed)
+
     def test_explicit_image_post_request_routes_without_an_extra_question(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -105,6 +111,63 @@ class AskBrandRouterTests(unittest.TestCase):
             ["对标图片", "对标文案", "产品图"],
         )
         self.assertEqual(decision["recommended_skill"], "ugc-image-post")
+
+    def test_daily_topic_request_routes_to_topic_radar(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROUTER),
+                "--request",
+                "请执行小红书每日选题生成",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        decision = json.loads(result.stdout)
+        self.assertEqual(decision["status"], "ready")
+        self.assertEqual(decision["intent"], "topic_research")
+        self.assertEqual(decision["recommended_skill"], "xhs-topic-radar")
+        self.assertEqual(decision["question"], "")
+
+    def test_generic_xiaohongshu_production_still_routes_to_image_post(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROUTER),
+                "--request",
+                "根据这些素材生成小红书图文笔记",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        decision = json.loads(result.stdout)
+        self.assertEqual(decision["recommended_skill"], "ugc-image-post")
+        self.assertEqual(decision["status"], "needs_input")
+
+    def test_mixed_topic_and_production_request_asks_one_sequence_question(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROUTER),
+                "--request",
+                "先做选题研究再生成图文",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        decision = json.loads(result.stdout)
+        self.assertEqual(decision["status"], "needs_confirmation")
+        self.assertEqual(decision["recommended_skill"], "xhs-topic-radar")
+        self.assertEqual(decision["question"].count("？"), 1)
 
 
 if __name__ == "__main__":

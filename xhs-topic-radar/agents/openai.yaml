@@ -1,0 +1,4 @@
+interface:
+  display_name: "XHS Topic Radar"
+  short_description: "采集小红书需求词与证据，生成可执行的每日选题策略卡"
+  default_prompt: "Use $xhs-topic-radar to research and generate an evidence-backed Xiaohongshu daily topic report, stopping for approval before paid collection."

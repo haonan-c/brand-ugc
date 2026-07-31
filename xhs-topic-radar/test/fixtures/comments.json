@@ -1,0 +1,10 @@
+{
+  "platform": "xhs",
+  "tool": "xhs_get_note_comments_by_note_id",
+  "data": {
+    "items": [
+      { "content": "我们学校的综测文件在哪里查？" },
+      { "content": "大三现在申请还来得及吗？" }
+    ]
+  }
+}

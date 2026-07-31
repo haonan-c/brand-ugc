@@ -1,0 +1,12 @@
+{
+  "code": 200,
+  "data": {
+    "success": true,
+    "data": {
+      "comments": [
+        { "id": "c1", "content": "学校的创新学分文件在哪里查看？" },
+        { "id": "c2", "content": "申请需要准备什么材料？" }
+      ]
+    }
+  }
+}

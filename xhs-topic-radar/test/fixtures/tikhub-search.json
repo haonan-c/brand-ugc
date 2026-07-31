@@ -1,0 +1,26 @@
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "code": 0,
+    "success": true,
+    "data": {
+      "items": [
+        {
+          "note": {
+            "id": "note-tikhub-1",
+            "xsec_token": "token-value=",
+            "title": "大学生软著申请避坑",
+            "desc": "学校加分规则需要查官方文件",
+            "timestamp": 1784685484,
+            "liked_count": "1.1万",
+            "collected_count": 500,
+            "comments_count": 30,
+            "shared_count": 8,
+            "user": { "nickname": "测试用户" }
+          }
+        }
+      ]
+    }
+  }
+}

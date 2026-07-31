@@ -1,0 +1,144 @@
+---
+name: xhs-topic-radar
+description: Discover Xiaohongshu autocomplete demand language, collect bounded TikHub note/comment evidence, and generate evidence-backed daily topic strategy cards. Use when users ask for 小红书每日选题、选题雷达、热点选题、需求词、搜索联想、话题研究，或希望先研究选题再进入品牌图文/短视频生产。
+---
+
+# Xiaohongshu Topic Radar
+
+Use this Skill for topic discovery and evidence-backed planning. It does not publish content and does not call image-generation services.
+
+## Runtime
+
+- Node.js `>=22.5.0` is required (`node:sqlite` is used).
+- TikHub access requires the user's own `TIKHUB_API_KEY`.
+- Never ask the user to paste a real key into chat, logs, screenshots, or command-line arguments.
+- State is local to `<brand-workspace>/.brand_ugc/topic-radar/`.
+
+Resolve every relative path in this file against this Skill directory. The CLI is:
+
+```bash
+node scripts/topic_radar.mjs <command> --workspace "/absolute/brand/workspace"
+```
+
+## Guided workflow
+
+### 1. Configure
+
+If the user has not chosen an industry and lookback period, ask for them before any paid request. Supported lookback is 1–180 days; recommend 7 days by default.
+
+```bash
+node scripts/topic_radar.mjs setup \
+  --workspace "/absolute/brand/workspace" \
+  --industry "<industry>" \
+  --lookback-days 7
+```
+
+Software-copyright industries keep the 4/3/3 audience quotas for students, high-tech enterprises, and Hangzhou E-class talent. Other industries use ten general-audience topics.
+
+### 2. Configure the TikHub key safely
+
+Prefer an existing `TIKHUB_API_KEY` environment variable. Otherwise instruct the user to run this themselves in a trusted terminal; the key is read from stdin and never accepted as an argument:
+
+```bash
+read -s TIKHUB_KEY && printf '%s' "$TIKHUB_KEY" | \
+  node scripts/topic_radar.mjs key set
+unset TIKHUB_KEY
+```
+
+Check without exposing the key:
+
+```bash
+node scripts/topic_radar.mjs key status
+```
+
+### 3. Preview demand terms, then stop
+
+```bash
+node scripts/topic_radar.mjs preview \
+  --workspace "/absolute/brand/workspace"
+```
+
+This stage performs only the bounded autocomplete discovery requests (normally three). Present the exact returned seeds and suggestion terms, requests already spent, estimated cost already spent, remaining maximum requests, and remaining estimated cost.
+
+**Stop and wait for explicit user approval.** Do not infer approval from the original request. If a matching report already exists, show its path; only use `--force` after the user explicitly requests a paid refresh.
+
+### 4. Collect only after approval
+
+```bash
+node scripts/topic_radar.mjs collect \
+  --workspace "/absolute/brand/workspace" \
+  --plan "/absolute/path/from-preview.json" \
+  --approve
+```
+
+The CLI rejects collection without `--approve` and validates that the plan is current and matches the configuration. It preserves the hard caps of 27 TikHub business requests and US$0.30, performs official pricing and balance preflight, paces paid calls, saves raw responses, samples comments, records partial failures, and writes a pending evidence pack.
+
+### 5. Generate strategy cards
+
+Read the pending evidence pack completely. Follow its `industry`, `outputCount`, `audienceLabels`, and `audienceQuotas` exactly. Create a JSON array that validates against `schemas/topic-candidates.schema.json`.
+
+For every topic:
+
+- cite at least one exact, unmodified `noteUrl` from `evidence`; prefer two mutually supporting sources;
+- copy `demandKeywords` only from the matching audience's `searchSuggestions.seed` or `terms`;
+- explain what the cited notes/comments concretely support in `evidenceSummary`;
+- use `marketOverview` and `keywordBenchmarks` only for relative judgments within this finite sample;
+- make `contentGap` an explicitly cautious sample-based strategy inference;
+- avoid exact and semantic repetition with `recentTopicTitles` and with other topics in the same report;
+- provide target scenario, format, structure, title pattern, writing framework, hook, must-cover points, outline, and a non-misleading CTA;
+- score all six dimensions and calculate:
+
+```text
+round(demandFit×25% + evidenceStrength×20% + timingFit×15%
+    + differentiation×15% + executability×15% + riskSafety×10%)
+```
+
+Priority is `high` at 80+, `medium` at 65–79, and `low` below 65.
+
+Autocomplete is demand-language evidence, not precise search volume. A single snapshot does not establish a platform-wide trend, algorithm preference, or guaranteed viral result. Xiaohongshu posts are social evidence, never factual, legal, or policy authority. For price, timing, eligibility, effects, policy, or compliance, require current official or authoritative verification and prohibit outcome guarantees in both `riskNote` and `doNotSay`.
+
+Save the generated array to a local draft file, for example:
+
+```text
+.brand_ugc/topic-radar/data/drafts/<run-id>-topics.json
+```
+
+### 6. Finalize through the validator
+
+```bash
+node scripts/topic_radar.mjs finalize \
+  --workspace "/absolute/brand/workspace" \
+  --run-id "<run-id>" \
+  --topics-file "/absolute/topics.json"
+```
+
+Do not hand-write the final report. The validator enforces counts, quotas, exact evidence URLs, audience demand keywords, required strategy-card fields, weighted scores, priorities, risk guards, and recent-title duplication before writing Markdown/JSON and updating SQLite state.
+
+### 7. Report completion concisely
+
+Return only a short summary with:
+
+- report path;
+- Top 3 topics;
+- TikHub request count and estimated cost;
+- evidence count;
+- collection error count.
+
+Do not paste the full report into chat.
+
+## Inspection and recovery
+
+```bash
+node scripts/topic_radar.mjs status --workspace "/absolute/brand/workspace"
+node scripts/topic_radar.mjs report --workspace "/absolute/brand/workspace"
+node scripts/topic_radar.mjs report --workspace "/absolute/brand/workspace" --date YYYY-MM-DD
+node scripts/topic_radar.mjs config --workspace "/absolute/brand/workspace"
+```
+
+A failed or interrupted run remains inspectable in SQLite and local files. Reuse a preview plan only on the same local date and with the same configuration. Run a new preview after changing industry, lookback period, queries, quotas, or evidence limits.
+
+## Handoff to production
+
+After the user chooses one finalized strategy card, pass only that card and verified brand facts into a separate `ugc-image-post` or `ugc-storyboard` run. Do not silently begin paid content generation, and do not mix topic-radar state with production run directories.
+
+Detailed state and safety rules are in `references/workflow-contract.md`; field guidance is in `references/topic-card-contract.md`.

@@ -21,7 +21,7 @@
     "intent": {"type": "string", "minLength": 1},
     "recommended_skill": {
       "type": "string",
-      "enum": ["", "ask-brand", "brand-profile", "ugc-image-post", "ugc-storyboard"]
+      "enum": ["", "ask-brand", "brand-profile", "xhs-topic-radar", "ugc-image-post", "ugc-storyboard"]
     },
     "reason": {"type": "string", "minLength": 1},
     "missing_inputs": {

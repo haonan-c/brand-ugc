@@ -10,9 +10,10 @@
 
 从统一入口诊断品牌营销需求，把对标视频或对标图文迁移为品牌专属内容。
 
-这个仓库包含五个可以组合安装的 Codex Skill：
+这个仓库包含六个可以组合安装的 Codex Skill：
 
 - `ask-brand`：诊断需求、检查素材并路由到正确工作流。
+- `xhs-topic-radar`：发现小红书需求语言，生成带证据的每日选题策略卡。
 - `brand-profile`：维护本地多品牌、多产品档案和已核实事实。
 - `ugc-image-post`：生成小红书式多图候选稿、文案、预览和 QA。
 - `ugc-storyboard`：生成十二宫格短视频分镜和 Seedance 提示词。
@@ -31,9 +32,13 @@
 ```mermaid
 flowchart LR
     U["营销需求与本地素材"] --> A["ask-brand<br/>诊断与路由"]
+    A --> T["xhs-topic-radar<br/>需求与选题研究"]
     A --> P["brand-profile<br/>建立或解析品牌档案"]
     A --> I["ugc-image-post<br/>图文生产"]
     A --> V["ugc-storyboard<br/>视频分镜"]
+    T --> S["用户选中的策略卡"]
+    S -. "独立确认后的生产任务" .-> I
+    S -. "独立确认后的生产任务" .-> V
     P -. "品牌约束与已核实事实" .-> I
     P -. "品牌约束与已核实事实" .-> V
     I --> G["image-generator<br/>共享生图能力"]
@@ -44,7 +49,8 @@ flowchart LR
 
 | 类型 | Skill | 什么时候使用 |
 | --- | --- | --- |
-| 统一入口 | `ask-brand` | 需求还比较宽泛、素材不确定，或需要判断先做图文还是视频 |
+| 统一入口 | `ask-brand` | 需求还比较宽泛、素材不确定，或需要判断先研究、做图文还是视频 |
+| 研究入口 | `xhs-topic-radar` | 发现需求词并生成带证据的小红书选题策略卡 |
 | 品牌上下文 | `brand-profile` | 创建、更新或选择可复用的品牌与产品事实 |
 | 生产入口 | `ugc-image-post` | 已明确要做对标图文迁移 |
 | 生产入口 | `ugc-storyboard` | 已明确要做对标视频分镜 |
@@ -58,10 +64,11 @@ flowchart LR
 ### 1. 运行条件
 
 - [Codex](https://openai.com/codex/)
-- Node.js 与 `npx`，只用于一键安装
+- Node.js 与 `npx`；选题雷达要求 Node.js `>=22.5.0`，其他路径只在一键安装时使用 Node
 - Python 3.10 或更高版本
 - 图文路径：ImageMagick，以及 Noto Sans CJK SC、苹方或微软雅黑字体
 - 视频路径：FFmpeg 和 FFprobe
+- 选题雷达：用户自己的 [TikHub API Key](https://api.tikhub.io/)
 - 在线生图：[EvoLink API Key](https://evolink.ai/dashboard/keys)
 
 macOS/Linux 可以先确认：
@@ -77,7 +84,7 @@ ffprobe -version
 
 ```bash
 npx -y skills@latest add haonan-c/brand-ugc \
-  --skill ask-brand brand-profile ugc-image-post ugc-storyboard image-generator \
+  --skill ask-brand xhs-topic-radar brand-profile ugc-image-post ugc-storyboard image-generator \
   --agent codex --global --yes
 ```
 
@@ -122,8 +129,8 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 
 ### 第一次使用
 
-1. 安装五个 Skill，并确认图文或视频路径所需的本地依赖。
-2. 配置 EvoLink API Key；仅离线演示图文流程时可以暂不配置。
+1. 安装六个 Skill，并确认目标路径所需的本地依赖。
+2. 选题研究配置 TikHub Key，在线生图配置 EvoLink Key；仅离线演示图文流程时可以暂不配置 EvoLink。
 3. 可选：用 `$brand-profile` 建立品牌语气、禁用表达、产品事实和证据。
 4. 整理一组任务素材。图文和视频对标素材不要混在一次生产任务里。
 5. 不确定路径时从 `$ask-brand` 开始；目标明确时直接调用生产 Skill。
@@ -147,6 +154,16 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 
 如果命令返回错误，先修正输入、依赖或生成问题；输入未改变时可恢复原任务，输入已经
 改变时应新建任务。
+
+## 选题雷达路径
+
+需要先研究方向再创作时，使用 `$xhs-topic-radar`。它先询问行业和回看周期，只执行受限的搜索联想预览，并在采集笔记与评论前等待用户明确确认。默认软著运行最多 27 次 TikHub 业务请求，费用硬上限为 US$0.30。
+
+每张策略卡包含目标人群、场景、样本内依据、具体证据解读、原样小红书来源链接、搜索联想需求词、标题与写作框架、开头钩子、提纲、CTA、六维加权评分和政策/表述风控。报告保存在 `.brand_ugc/topic-radar/reports/`。
+
+单次搜索快照不代表精确搜索量或全平台趋势，小红书帖子也不是政策权威。报告完成后，由用户先选中一张策略卡，再开启独立的图文或分镜生产任务。
+
+CLI、凭据、费用保护和本地状态说明见 [`docs/xhs-topic-radar.md`](docs/xhs-topic-radar.md)。
 
 ## 图文路径
 
@@ -203,6 +220,7 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 
 | 路径 | 必填输入 | 主要输出 |
 | --- | --- | --- |
+| 选题雷达 | 行业、回看周期、TikHub Key、明确的采集确认 | 10 张证据策略卡、Markdown/JSON 报告、本地证据包 |
 | 图文 | 1–9 张对标图片、对标文案、产品图 | 4–9 张 3:4 图片、三个标题、正文、预览、JSON、QA |
 | 视频 | 对标视频、产品图 | 2K 十二宫格、Seedance 总提示词、12 条运动指令、QA |
 | 品牌档案 | 品牌 ID、品牌名称、产品数组 | 可复用的 `profile.json` 和任务上下文 |
@@ -211,6 +229,8 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 
 ## 隐私、费用和质量保护
 
+- 选题雷达先执行三次搜索联想预览，剩余 TikHub 采集必须获得明确确认。
+- 选题证据和报告保存在本地，原样保留笔记 URL 以便追溯。
 - 原始视频保存在本地，只发送最高 720p 的派生分析代理和可选单声道音轨。
 - 图文对标图片不直接作为在线生图参考；只有交互页面需要时才发送产品参考图。
 - 日志不得包含 API Key、Authorization、Base64 或临时资源 URL。
@@ -261,6 +281,7 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
 ```text
 .brand_ugc/
 ├── brands/<brand-id>/profile.json
+├── topic-radar/          配置、原始证据、SQLite 历史、证据包和报告
 ├── drafts/<run-name>/content-plan.json
 └── <run-name>/
     ├── inputs/          固化后的输入和清单
@@ -312,6 +333,7 @@ PYTHONPATH=. uv run --with pytest pytest -q
 
 ```text
 ask-brand/        统一诊断与编排入口
+xhs-topic-radar/  小红书需求发现与选题策略报告
 brand-profile/    多品牌、多产品档案
 ugc-image-post/   图文规划、生图、排版、QA 与恢复
 ugc-storyboard/   七阶段视频分镜工作流

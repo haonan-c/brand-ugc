@@ -19,8 +19,22 @@ IMAGE_TERMS = {
     "image post",
     "carousel",
 }
+IMAGE_PRODUCTION_TERMS = IMAGE_TERMS - {"小红书", "笔记"}
 VIDEO_TERMS = {"视频", "短视频", "分镜", "seedance", "storyboard", "video"}
 PROFILE_TERMS = {"品牌档案", "品牌规范", "品牌语气", "brand profile", "brand kit"}
+RADAR_TERMS = {
+    "选题雷达",
+    "每日选题",
+    "生成选题",
+    "选题生成",
+    "热点选题",
+    "需求词",
+    "搜索联想",
+    "话题研究",
+    "选题研究",
+    "topic radar",
+    "topic research",
+}
 
 
 def _contains(text: str, terms: set[str]) -> bool:
@@ -83,9 +97,26 @@ def _decision(
 def route(args: argparse.Namespace) -> dict[str, Any]:
     request = args.request.strip()
     wants_image = _contains(request, IMAGE_TERMS)
+    wants_image_production = _contains(request, IMAGE_PRODUCTION_TERMS)
     wants_video = _contains(request, VIDEO_TERMS)
     wants_profile = _contains(request, PROFILE_TERMS)
+    wants_radar = _contains(request, RADAR_TERMS)
 
+    if wants_radar and (wants_image_production or wants_video):
+        return _decision(
+            status="needs_confirmation",
+            intent="topic_then_production",
+            skill="xhs-topic-radar",
+            reason="请求同时包含选题研究和成品生产，必须先确认执行顺序，不能隐式启动两条工作流。",
+            question="是否先完成选题雷达，再从报告中选一个方向进入内容生产？",
+        )
+    if wants_radar:
+        return _decision(
+            status="ready",
+            intent="topic_research",
+            skill="xhs-topic-radar",
+            reason="用户明确要求选题雷达、每日选题、需求词或话题研究。",
+        )
     if wants_image and wants_video:
         return _decision(
             status="needs_confirmation",
