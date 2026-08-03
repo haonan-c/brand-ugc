@@ -151,13 +151,17 @@ SKILL.md 完全一致，不需要做任何改动。
 FFmpeg/FFprobe 是否齐全，列出缺失依赖对应的安装命令，并引导配置 EvoLink 和 TikHub Key，
 不需要自己逐条对照文档。
 
-也可以手动配置 EvoLink：
+初始化会在当前项目创建 `.brand_ugc/credentials.json`，该文件已加入 `.gitignore`。在可信编辑器中填写一次即可：
 
-```bash
-export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
+```json
+{
+  "schemaVersion": 1,
+  "tikhubApiKey": "<YOUR_TIKHUB_KEY>",
+  "evolinkApiKey": "<YOUR_EVOLINK_KEY>"
+}
 ```
 
-也可以把 Key 单独保存在：
+环境变量仍可作为临时覆盖，旧的用户级凭证位置也继续兼容：
 
 ```text
 Windows:      %USERPROFILE%\.agents\skills\image-generator\secrets\api_key.txt
@@ -221,9 +225,9 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 ```
 
 它不生成内容、不调用付费 API：先问清楚这次要用哪条路径，再主动检查该路径需要的
-系统依赖、报告六个 Skill 的安装状态，并完成无需密钥的初始化。配置 TikHub 时，Agent
-会启动或提供一条隐藏输入命令；用户只在可信终端输入 Key，随后由 Agent 自动验证并恢复
-原任务。全程不会要求把真实 Key 粘贴进聊天记录。
+系统依赖、报告六个 Skill 的安装状态，并创建项目级 `.brand_ugc/credentials.json`。用户
+在可信编辑器中填写所需 Key 一次，随后由 Agent 自动验证并恢复原任务；不需要每次设置
+环境变量。全程不会要求把真实 Key 粘贴进聊天记录。
 
 ## 选题雷达路径
 
@@ -350,6 +354,7 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
 
 ```text
 .brand_ugc/
+├── credentials.json     项目级 TikHub / EvoLink 凭证（已忽略，禁止提交）
 ├── brands/<brand-id>/profile.json
 ├── topic-radar/          配置、原始证据、SQLite 历史、证据包和报告
 ├── drafts/<run-name>/content-plan.json
@@ -362,7 +367,7 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
 ```
 
 运行目录默认不覆盖其他任务。分享结果时优先发送 `deliverables/`，不要把包含原始
-素材、状态或密钥路径的整个任务目录上传到公开仓库。
+素材、状态或 credentials.json 的整个任务目录上传到公开仓库。
 
 ## 常见问题
 

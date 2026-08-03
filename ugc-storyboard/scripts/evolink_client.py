@@ -26,13 +26,34 @@ class EvoLinkError(RuntimeError):
     """Raised when EvoLink configuration or requests fail."""
 
 
-def load_api_key(key_file: str | Path) -> str:
+def _project_api_key(project_root: str | Path | None = None) -> tuple[str, Path]:
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
+    path = root / ".brand_ugc" / "credentials.json"
+    if not path.is_file():
+        return "", path
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EvoLinkError(f"项目凭证文件无法读取：{path}：{exc}") from exc
+    if not isinstance(payload, dict):
+        raise EvoLinkError(f"项目凭证文件顶层必须是 JSON 对象：{path}")
+    return str(payload.get("evolinkApiKey", "")).strip(), path
+
+
+def load_api_key(
+    key_file: str | Path,
+    project_root: str | Path | None = None,
+) -> str:
     """Load one EvoLink key while preserving the legacy environment fallback."""
 
     for name in ("EVOLINK_API_KEY", "IMAGEGEN_API_KEY"):
         value = os.environ.get(name, "").strip()
         if value:
             return value
+
+    project_value, project_path = _project_api_key(project_root)
+    if project_value:
+        return project_value
 
     path = Path(key_file).expanduser()
     if path.exists():
@@ -42,7 +63,7 @@ def load_api_key(key_file: str | Path) -> str:
 
     raise EvoLinkError(
         f"缺少 EvoLink API Key。请设置 EVOLINK_API_KEY，"
-        f"或将密钥写入 {path}。"
+        f"或填写 {project_path}。"
     )
 
 

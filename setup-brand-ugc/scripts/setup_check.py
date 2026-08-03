@@ -25,6 +25,12 @@ SKILL_NAMES = [
     "ugc-storyboard",
     "image-generator",
 ]
+PROJECT_CREDENTIALS_RELATIVE = Path(".brand_ugc") / "credentials.json"
+PROJECT_CREDENTIAL_TEMPLATE = {
+    "schemaVersion": 1,
+    "tikhubApiKey": "",
+    "evolinkApiKey": "",
+}
 
 CJK_FONT_PATTERN = re.compile(
     r"Noto Sans CJK SC|PingFang|Microsoft YaHei|Heiti|WenQuanYi", re.IGNORECASE
@@ -97,10 +103,25 @@ def _installed_skills() -> dict:
     return installed
 
 
-def _evolink_key_status() -> dict:
+def _project_credentials(project_root: str) -> tuple[Path, dict, str | None]:
+    path = Path(project_root).expanduser().resolve() / PROJECT_CREDENTIALS_RELATIVE
+    if not path.is_file():
+        return path, {}, None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return path, {}, f"项目凭证文件无法读取：{exc}"
+    if not isinstance(data, dict):
+        return path, {}, "项目凭证文件顶层必须是 JSON 对象。"
+    return path, data, None
+
+
+def _evolink_key_status(project_path: Path, project_credentials: dict) -> dict:
     for name in ("EVOLINK_API_KEY", "IMAGEGEN_API_KEY"):
         if os.environ.get(name, "").strip():
             return {"configured": True, "source": "environment", "path": None}
+    if str(project_credentials.get("evolinkApiKey", "")).strip():
+        return {"configured": True, "source": "project-file", "path": str(project_path)}
     for base in (GLOBAL_SKILLS_ROOT, LOCAL_SUITE_ROOT):
         secret_file = base / "image-generator" / "secrets" / "api_key.txt"
         if secret_file.is_file() and secret_file.read_text(encoding="utf-8-sig").strip():
@@ -108,9 +129,11 @@ def _evolink_key_status() -> dict:
     return {"configured": False, "source": None, "path": None}
 
 
-def _tikhub_key_status() -> dict:
+def _tikhub_key_status(project_path: Path, project_credentials: dict) -> dict:
     if os.environ.get("TIKHUB_API_KEY", "").strip():
         return {"configured": True, "source": "environment", "path": None}
+    if str(project_credentials.get("tikhubApiKey", "")).strip():
+        return {"configured": True, "source": "project-file", "path": str(project_path)}
     config_home = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
     credential_file = config_home / "pi-xhs-topic-radar" / "credentials.json"
     if credential_file.is_file():
@@ -133,6 +156,9 @@ def _brand_profiles(project_root: str) -> list[str]:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    project_path, project_credentials, project_error = _project_credentials(
+        args.project_root
+    )
     report = {
         "schema_version": 1,
         "python": _python_status(),
@@ -142,13 +168,68 @@ def cmd_check(args: argparse.Namespace) -> int:
         "ffmpeg": _tool_status("ffmpeg", "-version"),
         "ffprobe": _tool_status("ffprobe", "-version"),
         "skills": _installed_skills(),
+        "credentials_file": {
+            "path": str(project_path),
+            "exists": project_path.is_file(),
+            "valid": project_error is None,
+            "error": project_error,
+        },
         "credentials": {
-            "evolink": _evolink_key_status(),
-            "tikhub": _tikhub_key_status(),
+            "evolink": _evolink_key_status(project_path, project_credentials),
+            "tikhub": _tikhub_key_status(project_path, project_credentials),
         },
         "brand_profiles": _brand_profiles(args.project_root),
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _ensure_credentials_gitignore(project_root: Path) -> bool:
+    gitignore = project_root / ".gitignore"
+    ignore_rule = ".brand_ugc/credentials.json"
+    existing = gitignore.read_text(encoding="utf-8") if gitignore.is_file() else ""
+    rules = {line.strip() for line in existing.splitlines()}
+    if ignore_rule in rules or ".brand_ugc/" in rules:
+        return False
+    separator = "" if not existing or existing.endswith("\n") else "\n"
+    gitignore.write_text(
+        existing + separator + ignore_rule + "\n",
+        encoding="utf-8",
+    )
+    return True
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    project_root = Path(args.project_root).expanduser().resolve()
+    if not project_root.is_dir():
+        raise SystemExit(f"项目目录不存在：{project_root}")
+    credentials_dir = project_root / ".brand_ugc"
+    credentials_dir.mkdir(parents=True, exist_ok=True)
+    if os.name != "nt":
+        os.chmod(credentials_dir, 0o700)
+    credentials_file = credentials_dir / "credentials.json"
+    created = False
+    if not credentials_file.exists():
+        credentials_file.write_text(
+            json.dumps(PROJECT_CREDENTIAL_TEMPLATE, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        created = True
+    if os.name != "nt":
+        os.chmod(credentials_file, 0o600)
+    gitignore_updated = _ensure_credentials_gitignore(project_root)
+    print(
+        json.dumps(
+            {
+                "initialized": True,
+                "created": created,
+                "credentials_file": str(credentials_file),
+                "gitignore_updated": gitignore_updated,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -182,6 +263,12 @@ def cmd_set_evolink_key(_args: argparse.Namespace) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init_parser = subparsers.add_parser(
+        "init", help="Create a protected project-local credential template."
+    )
+    init_parser.add_argument("--project-root", default=".")
+    init_parser.set_defaults(func=cmd_init)
 
     check_parser = subparsers.add_parser(
         "check", help="Report dependency, install, and credential status as JSON."

@@ -11,7 +11,7 @@ description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, 
 
 - 一次只问一个问题；先确定用户要用哪些路径，再只检查和引导该路径需要的依赖与凭证。
 - 这是 Agent 主导的初始化流程：主动执行只读检查和无需凭证、无需付费的配置，不要只报告步骤或连续粘贴命令让用户自行收尾。
-- 从不要求用户把真实 API Key 粘贴进聊天记录或命令参数；写入凭证时始终通过标准输入。
+- 从不要求用户把真实 API Key 粘贴进聊天记录、命令参数或 Agent 可读取的输入；默认由用户在可信编辑器中填写项目凭证文件。
 - 缺失的系统依赖只报告和给出安装命令，不代为静默安装、不修改系统或安全配置。
 - 已经配置好的凭证不覆盖，除非用户明确要求更换。
 - 创建品牌档案是可选步骤，由用户决定是否现在做；setup 完成不等于已经有品牌档案。
@@ -30,6 +30,14 @@ description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, 
 
 ### 2. 检查依赖与安装状态
 
+先由 Agent 初始化项目级凭证模板；命令不会覆盖已有文件：
+
+```bash
+python3 scripts/setup_check.py init --project-root "$PWD"
+```
+
+模板路径固定为 `<项目>/.brand_ugc/credentials.json`，并自动加入项目 `.gitignore`。然后执行检查：
+
 ```bash
 python3 scripts/setup_check.py check --project-root "$PWD"
 ```
@@ -46,26 +54,27 @@ npx -y skills@latest add haonan-c/brand-ugc \
 
 ### 3. 配置凭证
 
-**EvoLink（图文、短视频路径需要）**：如果 `credentials.evolink.configured` 为 `false`，问用户是否现在配置。两种方式二选一：
+默认让用户在可信编辑器中打开 `<项目>/.brand_ugc/credentials.json`，按需填写：
 
-- 环境变量（推荐，用户自己在终端执行，不要替用户输出真实值）：
-  ```bash
-  export EVOLINK_API_KEY="<用户自己的 Key>"
-  ```
-- 写入本地受保护文件，Key 只经标准输入传递：
-  ```bash
-  read -s EVOLINK_KEY && printf '%s' "$EVOLINK_KEY" | \
-    python3 scripts/setup_check.py set-evolink-key
-  unset EVOLINK_KEY
-  ```
-
-**TikHub（选题雷达路径需要）**：如果 `credentials.tikhub.configured` 为 `false`，先由 Agent 运行 `key status`。若能展示用户可交互的终端，由 Agent 启动 `xhs-topic-radar` 的安全输入命令；否则只给用户下面这一条命令。用户只负责在终端输入 Key，其余验证和恢复原任务由 Agent 完成：
-
-```bash
-node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
+```json
+{
+  "schemaVersion": 1,
+  "tikhubApiKey": "",
+  "evolinkApiKey": ""
+}
 ```
 
-该命令会隐藏输入并写入本地受保护文件。用户下一次回复后，由 Agent 自动运行 `node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key status` 和本 Skill 的 `check` 确认，不要求用户自行验证、只回复“已配置”或重新描述原需求。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能代为保存该旧 Key。
+用户只需填写本次路径需要的字段。保存后由 Agent 重新运行 `check`，不要要求每次设置环境变量。环境变量仍作为临时覆盖，读取优先级为：环境变量 → 项目凭证文件 → 旧用户级凭证文件。
+
+**EvoLink（图文、短视频路径需要）**：填写 `evolinkApiKey`。如果用户不希望把凭证保存在项目中，仍可使用环境变量：
+
+```bash
+export EVOLINK_API_KEY="<用户自己的 Key>"
+```
+
+**TikHub（选题雷达路径需要）**：填写 `tikhubApiKey`。不要由 Agent 启动隐藏输入命令或要求用户去终端输入；应直接提示上面的项目凭证文件绝对路径。
+
+用户下一次回复后，由 Agent 自动运行带同一 `--workspace` 的 `key status` 和本 Skill 的 `check`。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能写入项目文件。
 
 ### 4. 可选：创建第一个品牌档案
 

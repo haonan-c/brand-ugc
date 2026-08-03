@@ -144,13 +144,19 @@ Use `$setup-brand-ugc`: it checks whether Python, Node.js, ImageMagick, a CJK fo
 FFmpeg/FFprobe are present, lists install commands for anything missing, and guides
 EvoLink and TikHub credential setup, so you do not have to check each dependency by hand.
 
-You can also configure EvoLink manually:
+Initialization creates `.brand_ugc/credentials.json` in the current project and adds it
+to `.gitignore`. Fill it once in a trusted editor:
 
-```bash
-export EVOLINK_API_KEY="<YOUR_EVOLINK_KEY>"
+```json
+{
+  "schemaVersion": 1,
+  "tikhubApiKey": "<YOUR_TIKHUB_KEY>",
+  "evolinkApiKey": "<YOUR_EVOLINK_KEY>"
+}
 ```
 
-Alternatively, save the key by itself at:
+Environment variables remain available as temporary overrides, and the legacy user-level
+EvoLink key locations remain supported:
 
 ```text
 Windows:      %USERPROFILE%\.agents\skills\image-generator\secrets\api_key.txt
@@ -216,10 +222,10 @@ I plan to use: image post (or short video / topic radar / all of them).
 
 It never produces content or calls a paid API. It asks which path you intend to use,
 actively checks only the system dependencies that path needs, reports which of the six
-production Skills are installed, and completes every setup step that does not require a
-secret. For TikHub, the Agent starts or provides one hidden-input command; you enter the
-key only in a trusted terminal, then the Agent verifies it and resumes the original task.
-It never asks you to paste a real key into chat.
+production Skills are installed, and creates a project-local
+`.brand_ugc/credentials.json`. You fill the required keys once in a trusted editor; the
+Agent verifies them and resumes the original task without requiring environment variables
+on every run. It never asks you to paste a real key into chat.
 
 ## Topic-radar workflow
 
@@ -348,6 +354,7 @@ python3 ~/.agents/skills/ugc-storyboard/scripts/run_public_pipeline.py \
 
 ```text
 .brand_ugc/
+├── credentials.json     Project TikHub/EvoLink credentials (ignored; never commit)
 ├── brands/<brand-id>/profile.json
 ├── topic-radar/          Config, raw evidence, SQLite history, pending packs, and reports
 ├── drafts/<run-name>/content-plan.json

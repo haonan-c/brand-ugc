@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { loadConfig, loadDefaultConfig } from "../lib/config.mjs";
 import {
   clearTikHubCredential,
+  getProjectCredentialPath,
   loadTikHubCredential,
   saveTikHubCredential,
 } from "../lib/credentials.mjs";
@@ -27,7 +28,8 @@ const HELP = `xhs-topic-radar
 Commands:
   setup    --workspace <brand-workspace> --industry <name> --lookback-days <1-180>
   config   --workspace <brand-workspace>
-  key set|status|clear  (key set prompts securely in an interactive terminal)
+  key set|status|clear [--workspace <brand-workspace>]
+                         (key set prompts securely in an interactive terminal)
   preview  --workspace <brand-workspace> [--force]
   collect  --workspace <brand-workspace> --plan <plan.json> --approve [--force]
   finalize --workspace <brand-workspace> --run-id <id> --topics-file <topics.json>
@@ -104,11 +106,12 @@ function requireSetup(workspace) {
   }
 }
 
-async function credential() {
-  const value = await loadTikHubCredential();
+async function credential(options) {
+  const projectRoot = brandWorkspace(options);
+  const value = await loadTikHubCredential({ projectRoot });
   if (!value) {
     throw new Error(
-      "TikHub API Key is not configured. Use TIKHUB_API_KEY or run 'key set' in an interactive terminal.",
+      `缺少 TikHub API Key。请在 ${getProjectCredentialPath(projectRoot)} 的 tikhubApiKey 字段中配置后重试；不要通过聊天或命令参数提供 Key。`,
     );
   }
   return value;
@@ -148,11 +151,14 @@ async function showConfig(options) {
 
 async function keyCommand(options) {
   const action = options._[0] ?? "status";
+  const credentialOptions = options.workspace
+    ? { projectRoot: brandWorkspace(options) }
+    : {};
   if (action === "set") {
     const value = process.stdin.isTTY
       ? await readHiddenLine({ prompt: "TikHub API Key（输入内容不会显示）: " })
       : await readStdin();
-    const saved = await saveTikHubCredential(value);
+    const saved = await saveTikHubCredential(value, credentialOptions);
     output({
       ok: true,
       command: "key set",
@@ -164,7 +170,7 @@ async function keyCommand(options) {
     return;
   }
   if (action === "status") {
-    const value = await loadTikHubCredential();
+    const value = await loadTikHubCredential(credentialOptions);
     output({
       ok: true,
       command: "key status",
@@ -172,12 +178,15 @@ async function keyCommand(options) {
       masked: value?.masked ?? null,
       source: value?.source ?? null,
       path: value?.path ?? null,
+      configurationPath: options.workspace
+        ? getProjectCredentialPath(brandWorkspace(options))
+        : null,
     });
     return;
   }
   if (action === "clear") {
-    const path = await clearTikHubCredential();
-    const remaining = await loadTikHubCredential();
+    const path = await clearTikHubCredential(credentialOptions);
+    const remaining = await loadTikHubCredential(credentialOptions);
     output({
       ok: true,
       command: "key clear",
@@ -209,7 +218,7 @@ async function preview(options) {
       return;
     }
   }
-  const auth = await credential();
+  const auth = await credential(options);
   const plan = await discoverSearchSuggestions({
     workspace,
     config,
@@ -249,7 +258,7 @@ async function collect(options) {
   requireSetup(workspace);
   const planPath = required(options, "plan");
   const plan = await readJson(planPath);
-  const auth = await credential();
+  const auth = await credential(options);
   const result = await runCollection({
     workspace,
     force: true,
