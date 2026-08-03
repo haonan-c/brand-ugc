@@ -227,6 +227,14 @@ production Skills are installed, and creates a project-local
 Agent verifies them and resumes the original task without requiring environment variables
 on every run. It never asks you to paste a real key into chat.
 
+With your approval it also writes a brand-ugc guidance block into the project's
+`AGENTS.md`, creating the file if needed. The block records what each Skill is for, where
+brand profiles and credentials live, and the output-directory convention, so later
+sessions do not have to rediscover the suite. `CLAUDE.md` is created or updated too, but
+holds only an `@AGENTS.md` import, so Claude Code reads the same guidance instead of a
+second copy. Both blocks are delimited by `<!-- brand-ugc:start -->`, so re-running the
+setup only refreshes them and never touches your own sections.
+
 ## Topic-radar workflow
 
 Use `$xhs-topic-radar` when you need evidence-backed directions before producing a post. It asks for an industry and lookback period, spends only the bounded autocomplete preview first, and stops for explicit approval before note/comment collection. The default software-copyright run is capped at 27 TikHub business requests and US$0.30.
