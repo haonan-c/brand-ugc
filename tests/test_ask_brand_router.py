@@ -132,6 +132,26 @@ class AskBrandRouterTests(unittest.TestCase):
         self.assertEqual(decision["recommended_skill"], "xhs-topic-radar")
         self.assertEqual(decision["question"], "")
 
+    def test_generic_industry_topic_request_routes_to_topic_radar(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROUTER),
+                "--request",
+                "我需要软著的选题",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        decision = json.loads(result.stdout)
+        self.assertEqual(decision["status"], "ready")
+        self.assertEqual(decision["intent"], "topic_research")
+        self.assertEqual(decision["recommended_skill"], "xhs-topic-radar")
+        self.assertEqual(decision["question"], "")
+
     def test_generic_xiaohongshu_production_still_routes_to_image_post(self) -> None:
         result = subprocess.run(
             [

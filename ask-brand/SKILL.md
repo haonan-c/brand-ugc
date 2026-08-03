@@ -10,7 +10,7 @@ description: Diagnose a brand marketing request, inspect available local assets,
 
 ## 路由原则
 
-- 用户明确要求选题雷达、每日选题、需求词或话题研究时，直接进入 `xhs-topic-radar`。
+- 用户明确要求选题（包括“需要/想要/帮我找某行业的选题”）、选题雷达、每日选题、需求词或话题研究时，直接进入 `xhs-topic-radar`；不要把行业词误解为软件、项目或产品的命名需求。
 - 用户明确要求图文时，直接进入 `ugc-image-post`。
 - 用户明确要求短视频或分镜时，直接进入 `ugc-storyboard`。
 - 用户明确要求创建或更新品牌档案时，直接进入 `brand-profile`。
