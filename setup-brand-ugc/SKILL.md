@@ -1,6 +1,6 @@
 ---
 name: setup-brand-ugc
-description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, FFmpeg/FFprobe), report which brand-ugc Skills are installed, and guide first-time EvoLink and TikHub credential setup. Use when Codex needs to 初始化配置、检查依赖、配置 EvoLink 或 TikHub Key、诊断安装问题，或帮助第一次使用的用户完成 brand-ugc 首次设置。
+description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, FFmpeg/FFprobe), report which brand-ugc Skills are installed, guide first-time EvoLink and TikHub credential setup, and write the brand-ugc guidance block into the project's AGENTS.md or CLAUDE.md. Use when Codex needs to 初始化配置、检查依赖、配置 EvoLink 或 TikHub Key、诊断安装问题、写入项目 AGENTS.md 引导，或帮助第一次使用的用户完成 brand-ugc 首次设置。
 ---
 
 # brand-ugc 初始化设置
@@ -76,13 +76,36 @@ export EVOLINK_API_KEY="<用户自己的 Key>"
 
 用户下一次回复后，由 Agent 自动运行带同一 `--workspace` 的 `key status` 和本 Skill 的 `check`。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能写入项目文件。
 
-### 4. 可选：创建第一个品牌档案
+### 4. 写入项目引导文档
+
+把 brand-ugc 的使用引导写进项目的 `AGENTS.md`，并让 `CLAUDE.md` 指向它，让之后的新会话不用重新解释这套 Skills。先预览：
+
+```bash
+python3 scripts/setup_check.py agents-doc --project-root "$PWD" --dry-run
+```
+
+把 `block` 与 `pointer_block` 展示给用户并征得同意后再写入（这会在用户项目里创建或修改文件）：
+
+```bash
+python3 scripts/setup_check.py agents-doc --project-root "$PWD"
+```
+
+写入位置是固定的，不用问用户选哪个文件：
+
+- `AGENTS.md` 承载完整引导，文件不存在就创建。
+- `CLAUDE.md` 只放一个指向 `AGENTS.md` 的 `@AGENTS.md` 导入块，文件不存在也一并创建，让 Claude Code 读到同一份引导而不是两份各自维护的副本。
+
+两个文件里的区块都由 `<!-- brand-ugc:start -->` / `<!-- brand-ugc:end -->` 包裹，重复运行只更新区块内部，不动用户自己写的其他章节；内容没变化时对应文件返回 `action: "unchanged"` 且不写盘。用户想改措辞时直接改文件里的区块即可，但下次运行本步骤会被覆盖。
+
+### 5. 可选：创建第一个品牌档案
 
 如果 `brand_profiles` 为空，问用户是否现在创建。愿意的话交给 `$brand-profile` 完成，不在这个 Skill 里重复品牌档案的字段逻辑。不愿意也可以跳过，任务内提供的品牌信息可以作为临时上下文。
 
-### 5. 总结
+创建完成后可以重跑一次第 4 步，让引导里的品牌档案列表保持最新。
 
-由 Agent 再次运行 `check` 确认状态，用一段简短总结告诉用户：哪些依赖已就绪、哪些凭证已配置、接下来将恢复哪个原任务。初始化由上游 Skill 触发时，直接恢复该任务，不要求用户重新选择入口。
+### 6. 总结
+
+由 Agent 再次运行 `check` 确认状态，用一段简短总结告诉用户：哪些依赖已就绪、哪些凭证已配置、引导写进了哪个文件、接下来将恢复哪个原任务。初始化由上游 Skill 触发时，直接恢复该任务，不要求用户重新选择入口。
 
 ## 依赖安装参考
 

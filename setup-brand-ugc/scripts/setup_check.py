@@ -32,6 +32,11 @@ PROJECT_CREDENTIAL_TEMPLATE = {
     "evolinkApiKey": "",
 }
 
+AGENTS_DOC_FILENAME = "AGENTS.md"
+CLAUDE_DOC_FILENAME = "CLAUDE.md"
+AGENTS_DOC_START = "<!-- brand-ugc:start -->"
+AGENTS_DOC_END = "<!-- brand-ugc:end -->"
+
 CJK_FONT_PATTERN = re.compile(
     r"Noto Sans CJK SC|PingFang|Microsoft YaHei|Heiti|WenQuanYi", re.IGNORECASE
 )
@@ -233,6 +238,127 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _render_agents_block(project_root: Path) -> str:
+    profiles = _brand_profiles(str(project_root))
+    if profiles:
+        profile_note = "当前：" + "、".join(f"`{name}`" for name in profiles)
+    else:
+        profile_note = "当前：尚未创建"
+    missing = [name for name, status in _installed_skills().items() if not status["installed"]]
+
+    lines = [
+        AGENTS_DOC_START,
+        "## brand-ugc",
+        "",
+        "本项目使用 brand-ugc Skills 生产品牌内容。不确定用哪个时，先用 `$ask-brand`。",
+        "",
+        "| 需求 | Skill |",
+        "| --- | --- |",
+        "| 不确定 / 统一入口 | `$ask-brand` |",
+        "| 小红书选题、需求词研究 | `$xhs-topic-radar` |",
+        "| 图文帖 | `$ugc-image-post` |",
+        "| 短视频分镜脚本 | `$ugc-storyboard` |",
+        "| 品牌与产品事实、洞察 | `$brand-profile` |",
+        "| 依赖、凭证、安装自检 | `$setup-brand-ugc` |",
+        "",
+        "`image-generator` 是底层出图能力，由上面的 Skill 自动调用，一般不用直接点名。",
+    ]
+    if missing:
+        lines += [
+            "",
+            "未检测到已安装："
+            + "、".join(f"`{name}`" for name in missing)
+            + "；需要时用 `$setup-brand-ugc` 补齐。",
+        ]
+    lines += [
+        "",
+        "### 项目约定",
+        "",
+        f"- 品牌档案：`.brand_ugc/brands/<brand>/profile.json`（{profile_note}）",
+        (
+            "- 凭证：`.brand_ugc/credentials.json`，已加入 `.gitignore`；"
+            "不要提交，也不要把 Key 贴进对话"
+        ),
+        "- 产出：每次任务写入 `.brand_ugc/<run-name>/`，面向用户的成品在其 `deliverables/` 子目录",
+        "",
+        "### 使用规则",
+        "",
+        (
+            "- 生产任务开始前先确认品牌档案；没有就先跑 `$brand-profile`，"
+            "或用本次任务提供的信息作为临时上下文。"
+        ),
+        "- 依赖或凭证报错时先跑 `$setup-brand-ugc`，不要手工改凭证文件之外的系统配置。",
+        AGENTS_DOC_END,
+    ]
+    return "\n".join(lines)
+
+
+def _merge_agents_block(existing: str, block: str) -> str:
+    start = existing.find(AGENTS_DOC_START)
+    end = existing.find(AGENTS_DOC_END)
+    if start != -1 and end > start:
+        return existing[:start] + block + existing[end + len(AGENTS_DOC_END) :]
+    if not existing.strip():
+        return block + "\n"
+    separator = "\n" if existing.endswith("\n") else "\n\n"
+    return existing + separator + block + "\n"
+
+
+def _render_claude_pointer_block() -> str:
+    return "\n".join(
+        [
+            AGENTS_DOC_START,
+            "## brand-ugc",
+            "",
+            f"本项目的 Agent 指引统一维护在 `{AGENTS_DOC_FILENAME}`，下面这行把它导入：",
+            "",
+            f"@{AGENTS_DOC_FILENAME}",
+            AGENTS_DOC_END,
+        ]
+    )
+
+
+def _apply_agents_block(target: Path, block: str, dry_run: bool) -> dict:
+    existed = target.is_file()
+    existing = target.read_text(encoding="utf-8") if existed else ""
+    updated = _merge_agents_block(existing, block)
+    if updated == existing:
+        action = "unchanged"
+    else:
+        action = "updated" if existed else "created"
+    written = action != "unchanged" and not dry_run
+    if written:
+        target.write_text(updated, encoding="utf-8")
+    return {"path": str(target), "action": action, "written": written}
+
+
+def cmd_agents_doc(args: argparse.Namespace) -> int:
+    project_root = Path(args.project_root).expanduser().resolve()
+    if not project_root.is_dir():
+        raise SystemExit(f"项目目录不存在：{project_root}")
+
+    block = _render_agents_block(project_root)
+    pointer_block = _render_claude_pointer_block()
+    print(
+        json.dumps(
+            {
+                "dry_run": args.dry_run,
+                "agents_md": _apply_agents_block(
+                    project_root / AGENTS_DOC_FILENAME, block, args.dry_run
+                ),
+                "claude_md": _apply_agents_block(
+                    project_root / CLAUDE_DOC_FILENAME, pointer_block, args.dry_run
+                ),
+                "block": block,
+                "pointer_block": pointer_block,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
+
+
 def cmd_set_evolink_key(_args: argparse.Namespace) -> int:
     key = sys.stdin.read().strip()
     if not key:
@@ -275,6 +401,16 @@ def parse_args() -> argparse.Namespace:
     )
     check_parser.add_argument("--project-root", default=".")
     check_parser.set_defaults(func=cmd_check)
+
+    agents_doc_parser = subparsers.add_parser(
+        "agents-doc",
+        help="Write the brand-ugc guidance into AGENTS.md and point CLAUDE.md at it.",
+    )
+    agents_doc_parser.add_argument("--project-root", default=".")
+    agents_doc_parser.add_argument(
+        "--dry-run", action="store_true", help="只输出将要写入的区块，不修改文件。"
+    )
+    agents_doc_parser.set_defaults(func=cmd_agents_doc)
 
     set_key_parser = subparsers.add_parser(
         "set-evolink-key",
