@@ -46,6 +46,7 @@ class SetupCheckTests(unittest.TestCase):
             "ffmpeg",
             "ffprobe",
             "skills",
+            "credentials_file",
             "credentials",
             "brand_profiles",
         ):
@@ -68,6 +69,108 @@ class SetupCheckTests(unittest.TestCase):
         # the environment-variable path is asserted precisely below.
         self.assertIsInstance(report["credentials"]["evolink"]["configured"], bool)
         self.assertFalse(report["credentials"]["tikhub"]["configured"])
+
+    def test_init_creates_protected_project_credentials_and_check_reads_them(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            project_root = home / "project"
+            project_root.mkdir()
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "init",
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                env=_isolated_env(home),
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            initialized = json.loads(result.stdout)
+            credentials_file = project_root / ".brand_ugc" / "credentials.json"
+            self.assertEqual(
+                Path(initialized["credentials_file"]).resolve(),
+                credentials_file.resolve(),
+            )
+            self.assertTrue(initialized["created"])
+            self.assertEqual(
+                json.loads(credentials_file.read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "tikhubApiKey": "",
+                    "evolinkApiKey": "",
+                },
+            )
+            if os.name != "nt":
+                self.assertEqual(oct(credentials_file.stat().st_mode)[-3:], "600")
+            self.assertIn(
+                ".brand_ugc/credentials.json",
+                (project_root / ".gitignore").read_text(encoding="utf-8"),
+            )
+
+            credentials_file.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "tikhubApiKey": "project-tikhub-key",
+                        "evolinkApiKey": "project-evolink-key",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            check = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "check",
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                env=_isolated_env(home),
+                check=False,
+            )
+
+        self.assertEqual(check.returncode, 0, check.stderr)
+        report = json.loads(check.stdout)
+        self.assertTrue(report["credentials"]["tikhub"]["configured"])
+        self.assertEqual(report["credentials"]["tikhub"]["source"], "project-file")
+        self.assertTrue(report["credentials"]["evolink"]["configured"])
+        self.assertEqual(report["credentials"]["evolink"]["source"], "project-file")
+
+    def test_init_does_not_overwrite_existing_project_credentials(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            project_root = home / "project"
+            credentials_file = project_root / ".brand_ugc" / "credentials.json"
+            credentials_file.parent.mkdir(parents=True)
+            credentials_file.write_text(
+                '{"schemaVersion": 1, "tikhubApiKey": "keep-existing"}\n',
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "init",
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                env=_isolated_env(home),
+                check=False,
+            )
+            preserved = credentials_file.read_text(encoding="utf-8")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(json.loads(result.stdout)["created"])
+        self.assertIn("keep-existing", preserved)
 
     def test_check_detects_evolink_key_from_environment(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

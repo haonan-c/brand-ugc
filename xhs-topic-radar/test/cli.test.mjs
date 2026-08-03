@@ -76,3 +76,25 @@ test("key set reads stdin and key status only returns a masked value", async () 
   assert.equal(status.configured, true);
   assert.equal(status.source, "local-file");
 });
+
+test("key commands use project credentials when workspace is provided", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "brand-topic-project-key-"));
+  const configHome = await mkdtemp(join(tmpdir(), "brand-topic-user-key-"));
+  const env = { XDG_CONFIG_HOME: configHome, TIKHUB_API_KEY: "" };
+  const token = "project-token-1234567890";
+  const setResult = run(["key", "set", "--workspace", workspace], {
+    input: token,
+    env,
+  });
+  assert.equal(setResult.status, 0, setResult.stderr);
+  assert.doesNotMatch(setResult.stdout, new RegExp(token));
+
+  const credentials = JSON.parse(
+    await readFile(join(workspace, ".brand_ugc", "credentials.json"), "utf8"),
+  );
+  assert.equal(credentials.tikhubApiKey, token);
+  const statusResult = run(["key", "status", "--workspace", workspace], { env });
+  const status = JSON.parse(statusResult.stdout);
+  assert.equal(status.configured, true);
+  assert.equal(status.source, "project-file");
+});

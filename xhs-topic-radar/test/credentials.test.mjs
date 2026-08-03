@@ -7,6 +7,7 @@ import test from "node:test";
 import {
 	clearTikHubCredential,
 	getCredentialPaths,
+	getProjectCredentialPath,
 	loadTikHubCredential,
 	maskTikHubApiKey,
 	saveTikHubCredential,
@@ -57,6 +58,33 @@ test("environment credentials take precedence over the local Web credential", as
 		assert.equal(loaded.source, "environment");
 		assert.equal(loaded.path, null);
 	} finally {
+		await rm(configHome, { recursive: true, force: true });
+	}
+});
+
+test("project credentials take precedence over the user-level credential", async () => {
+	const root = await mkdtemp(join(tmpdir(), "topic-radar-project-credentials-"));
+	const configHome = await mkdtemp(join(tmpdir(), "topic-radar-credentials-"));
+	try {
+		await saveTikHubCredential("user_level_key_1234567890", { configHome });
+		const saved = await saveTikHubCredential(TEST_KEY, { projectRoot: root });
+		assert.equal(saved.source, "project-file");
+		assert.equal(saved.path, getProjectCredentialPath(root));
+		assert.equal((await stat(saved.path)).mode & 0o777, 0o600);
+
+		const loaded = await loadTikHubCredential({
+			env: {},
+			projectRoot: root,
+			configHome,
+		});
+		assert.equal(loaded.apiKey, TEST_KEY);
+		assert.equal(loaded.source, "project-file");
+
+		await clearTikHubCredential({ projectRoot: root });
+		const cleared = JSON.parse(await readFile(saved.path, "utf8"));
+		assert.equal(cleared.tikhubApiKey, "");
+	} finally {
+		await rm(root, { recursive: true, force: true });
 		await rm(configHome, { recursive: true, force: true });
 	}
 });

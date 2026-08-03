@@ -30,6 +30,14 @@ description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, 
 
 ### 2. 检查依赖与安装状态
 
+先由 Agent 初始化项目级凭证模板；命令不会覆盖已有文件：
+
+```bash
+python3 scripts/setup_check.py init --project-root "$PWD"
+```
+
+模板路径固定为 `<项目>/.brand_ugc/credentials.json`，并自动加入项目 `.gitignore`。然后执行检查：
+
 ```bash
 python3 scripts/setup_check.py check --project-root "$PWD"
 ```
@@ -46,26 +54,31 @@ npx -y skills@latest add haonan-c/brand-ugc \
 
 ### 3. 配置凭证
 
-**EvoLink（图文、短视频路径需要）**：如果 `credentials.evolink.configured` 为 `false`，问用户是否现在配置。两种方式二选一：
+默认让用户在可信编辑器中打开 `<项目>/.brand_ugc/credentials.json`，按需填写：
 
-- 环境变量（推荐，用户自己在终端执行，不要替用户输出真实值）：
-  ```bash
-  export EVOLINK_API_KEY="<用户自己的 Key>"
-  ```
-- 写入本地受保护文件，Key 只经标准输入传递：
-  ```bash
-  read -s EVOLINK_KEY && printf '%s' "$EVOLINK_KEY" | \
-    python3 scripts/setup_check.py set-evolink-key
-  unset EVOLINK_KEY
-  ```
-
-**TikHub（选题雷达路径需要）**：如果 `credentials.tikhub.configured` 为 `false`，先由 Agent 运行 `key status`。若能展示用户可交互的终端，由 Agent 启动 `xhs-topic-radar` 的安全输入命令；否则只给用户下面这一条命令。用户只负责在终端输入 Key，其余验证和恢复原任务由 Agent 完成：
-
-```bash
-node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
+```json
+{
+  "schemaVersion": 1,
+  "tikhubApiKey": "",
+  "evolinkApiKey": ""
+}
 ```
 
-该命令会隐藏输入并写入本地受保护文件。用户下一次回复后，由 Agent 自动运行 `node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key status` 和本 Skill 的 `check` 确认，不要求用户自行验证、只回复“已配置”或重新描述原需求。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能代为保存该旧 Key。
+用户只需填写本次路径需要的字段。保存后由 Agent 重新运行 `check`，不要要求每次设置环境变量。环境变量仍作为临时覆盖，读取优先级为：环境变量 → 项目凭证文件 → 旧用户级凭证文件。
+
+**EvoLink（图文、短视频路径需要）**：填写 `evolinkApiKey`。如果用户不希望把凭证保存在项目中，仍可使用环境变量：
+
+```bash
+export EVOLINK_API_KEY="<用户自己的 Key>"
+```
+
+**TikHub（选题雷达路径需要）**：填写 `tikhubApiKey`。也可继续使用隐藏输入命令，它会更新同一个项目凭证文件：
+
+```bash
+node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set --workspace "$PWD"
+```
+
+用户下一次回复后，由 Agent 自动运行带同一 `--workspace` 的 `key status` 和本 Skill 的 `check`。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能写入项目文件。
 
 ### 4. 可选：创建第一个品牌档案
 

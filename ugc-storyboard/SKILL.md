@@ -11,13 +11,14 @@ description: Generate a final 12-panel brand UGC storyboard image and a producti
 ## 首次配置
 
 1. 从 `https://evolink.ai/dashboard/keys` 获取一个 EvoLink API Key。
-2. 优先设置环境变量 `EVOLINK_API_KEY`。
-3. 也可把密钥写入与本 Skill 同级安装的
+2. 推荐运行 `setup-brand-ugc init`，把密钥填写到当前项目 `.brand_ugc/credentials.json` 的 `evolinkApiKey`；只需配置一次。
+3. 环境变量 `EVOLINK_API_KEY` 可临时覆盖项目配置。
+4. 兼容把密钥写入与本 Skill 同级安装的
    `image-generator/secrets/api_key.txt`；一键全局安装的默认位置是
    `~/.agents/skills/image-generator/secrets/api_key.txt`。
-4. 兼容读取旧环境变量名 `IMAGEGEN_API_KEY`，但其中必须是 EvoLink 密钥。
-5. 不在聊天、日志或提示词中显示密钥。
-6. 确认本机已安装 Python 3.10 或更高版本、FFmpeg 和 FFprobe。
+5. 兼容读取旧环境变量名 `IMAGEGEN_API_KEY`，但其中必须是 EvoLink 密钥。
+6. 不在聊天、日志或提示词中显示密钥。
+7. 确认本机已安装 Python 3.10 或更高版本、FFmpeg 和 FFprobe。
 
 ## 输入
 

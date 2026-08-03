@@ -62,19 +62,39 @@ def load_prompt(args: argparse.Namespace) -> str:
     return prompt
 
 
-def load_key(explicit: str | None) -> str:
+def _project_key(project_root: str | Path | None = None) -> tuple[str, Path]:
+    root = Path(project_root).expanduser().resolve() if project_root else Path.cwd()
+    path = root / ".brand_ugc" / "credentials.json"
+    if not path.is_file():
+        return "", path
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"项目凭证文件无法读取：{path}：{exc}") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit(f"项目凭证文件顶层必须是 JSON 对象：{path}")
+    return str(payload.get("evolinkApiKey", "")).strip(), path
+
+
+def load_key(
+    explicit: str | None,
+    project_root: str | Path | None = None,
+) -> str:
     if explicit and explicit.strip():
         return explicit.strip()
     for name in ("EVOLINK_API_KEY", "IMAGEGEN_API_KEY"):
         value = os.environ.get(name, "").strip()
         if value:
             return value
+    project_value, project_path = _project_key(project_root)
+    if project_value:
+        return project_value
     if SECRET_FILE.exists():
         value = SECRET_FILE.read_text(encoding="utf-8-sig").strip()
         if value:
             return value
     raise SystemExit(
-        f"缺少 EvoLink API Key。请设置 EVOLINK_API_KEY，或写入 {SECRET_FILE}。"
+        f"缺少 EvoLink API Key。请设置 EVOLINK_API_KEY，或填写 {project_path}。"
     )
 
 

@@ -37,21 +37,21 @@ Software-copyright industries keep the 4/3/3 audience quotas for students, high-
 
 ### 2. Configure the TikHub key safely
 
-First run `key status` yourself. Prefer an existing `TIKHUB_API_KEY` environment variable. If no credential exists, take ownership of the initialization flow instead of stopping with a list of commands:
+First run `key status` yourself with the brand workspace. Credential precedence is `TIKHUB_API_KEY`, project-local `.brand_ugc/credentials.json`, then the legacy user-level credential file:
 
 ```bash
-node scripts/topic_radar.mjs key status
+node scripts/topic_radar.mjs key status --workspace "/absolute/brand/workspace"
 ```
 
-When a user-visible interactive terminal is available, start the following command and ask the user to enter a fresh key there. The CLI hides the input and saves it to the protected local credential file:
+If the project file does not exist, use `setup-brand-ugc init` to create its protected template and ask the user to fill `tikhubApiKey` once in a trusted editor. Every later radar command reads it automatically. Alternatively, start the hidden-input command below; it updates the same project file:
 
 ```bash
-node scripts/topic_radar.mjs key set
+node scripts/topic_radar.mjs key set --workspace "/absolute/brand/workspace"
 ```
 
 If you cannot expose an interactive terminal, give only that one command for the user to run in a trusted terminal. Do not ask them to paste the key into chat, repeat the shell-pipeline form, run `key status`, or reply with an exact phrase. On their next message, run `key status` yourself. Once configured, continue automatically with the original topic-radar request without asking them to restate it.
 
-For non-interactive automation, `key set` still accepts the key through stdin. It never accepts a key as a command-line argument.
+For non-interactive automation, `key set` still accepts the key through stdin. Omitting `--workspace` preserves the legacy user-level behavior. It never accepts a key as a command-line argument.
 
 ### 3. Preview demand terms, then stop
 

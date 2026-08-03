@@ -8,10 +8,11 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const CREDENTIAL_DIRECTORY = "pi-xhs-topic-radar";
 const CREDENTIAL_FILENAME = "credentials.json";
+const PROJECT_CREDENTIAL_PATH = join(".brand_ugc", "credentials.json");
 
 export function validateTikHubApiKey(value) {
 	const apiKey = String(value ?? "").trim();
@@ -40,9 +41,52 @@ export function getCredentialPaths({ configHome } = {}) {
 	};
 }
 
+export function getProjectCredentialPath(projectRoot) {
+	return projectRoot ? join(resolve(projectRoot), PROJECT_CREDENTIAL_PATH) : null;
+}
+
+async function readCredentialFile(file) {
+	try {
+		const parsed = JSON.parse(await readFile(file, "utf8"));
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			throw new Error(`凭证文件顶层必须是 JSON 对象：${file}`);
+		}
+		return parsed;
+	} catch (error) {
+		if (error?.code === "ENOENT") return null;
+		if (error instanceof SyntaxError) {
+			throw new Error(`凭证文件格式损坏：${file}`);
+		}
+		throw error;
+	}
+}
+
+async function writeCredentialFile(file, payload) {
+	const directory = dirname(file);
+	await mkdir(directory, { recursive: true, mode: 0o700 });
+	await chmod(directory, 0o700);
+	const temporaryFile = join(
+		directory,
+		`.${CREDENTIAL_FILENAME}.${process.pid}.${randomUUID()}.tmp`,
+	);
+	try {
+		await writeFile(
+			temporaryFile,
+			`${JSON.stringify(payload, null, 2)}\n`,
+			{ encoding: "utf8", mode: 0o600, flag: "wx" },
+		);
+		await chmod(temporaryFile, 0o600);
+		await rename(temporaryFile, file);
+		await chmod(file, 0o600);
+	} finally {
+		await rm(temporaryFile, { force: true }).catch(() => {});
+	}
+}
+
 export async function loadTikHubCredential({
 	env = process.env,
 	configHome,
+	projectRoot,
 } = {}) {
 	const environmentKey = String(env.TIKHUB_API_KEY ?? "").trim();
 	if (environmentKey) {
@@ -55,17 +99,24 @@ export async function loadTikHubCredential({
 		};
 	}
 
-	const { file } = getCredentialPaths({ configHome });
-	let parsed;
-	try {
-		parsed = JSON.parse(await readFile(file, "utf8"));
-	} catch (error) {
-		if (error?.code === "ENOENT") return null;
-		if (error instanceof SyntaxError) {
-			throw new Error(`TikHub 凭据文件格式损坏：${file}`);
+	const projectFile = getProjectCredentialPath(projectRoot);
+	if (projectFile) {
+		const projectCredentials = await readCredentialFile(projectFile);
+		const projectKey = String(projectCredentials?.tikhubApiKey ?? "").trim();
+		if (projectKey) {
+			const apiKey = validateTikHubApiKey(projectKey);
+			return {
+				apiKey,
+				masked: maskTikHubApiKey(apiKey),
+				source: "project-file",
+				path: projectFile,
+			};
 		}
-		throw error;
 	}
+
+	const { file } = getCredentialPaths({ configHome });
+	const parsed = await readCredentialFile(file);
+	if (!parsed) return null;
 	const apiKey = validateTikHubApiKey(parsed?.tikhubApiKey);
 	return {
 		apiKey,
@@ -75,27 +126,29 @@ export async function loadTikHubCredential({
 	};
 }
 
-export async function saveTikHubCredential(apiKey, { configHome } = {}) {
+export async function saveTikHubCredential(apiKey, { configHome, projectRoot } = {}) {
 	const normalized = validateTikHubApiKey(apiKey);
-	const { directory, file } = getCredentialPaths({ configHome });
-	await mkdir(directory, { recursive: true, mode: 0o700 });
-	await chmod(directory, 0o700);
-	const temporaryFile = join(
-		directory,
-		`.${CREDENTIAL_FILENAME}.${process.pid}.${randomUUID()}.tmp`,
-	);
-	try {
-		await writeFile(
-			temporaryFile,
-			`${JSON.stringify({ version: 1, tikhubApiKey: normalized }, null, 2)}\n`,
-			{ encoding: "utf8", mode: 0o600, flag: "wx" },
-		);
-		await chmod(temporaryFile, 0o600);
-		await rename(temporaryFile, file);
-		await chmod(file, 0o600);
-	} finally {
-		await rm(temporaryFile, { force: true }).catch(() => {});
+	const projectFile = getProjectCredentialPath(projectRoot);
+	if (projectFile) {
+		const existing = (await readCredentialFile(projectFile)) ?? {
+			schemaVersion: 1,
+			tikhubApiKey: "",
+			evolinkApiKey: "",
+		};
+		await writeCredentialFile(projectFile, {
+			...existing,
+			schemaVersion: existing.schemaVersion ?? 1,
+			tikhubApiKey: normalized,
+		});
+		return {
+			apiKey: normalized,
+			masked: maskTikHubApiKey(normalized),
+			source: "project-file",
+			path: projectFile,
+		};
 	}
+	const { file } = getCredentialPaths({ configHome });
+	await writeCredentialFile(file, { version: 1, tikhubApiKey: normalized });
 	return {
 		apiKey: normalized,
 		masked: maskTikHubApiKey(normalized),
@@ -104,7 +157,18 @@ export async function saveTikHubCredential(apiKey, { configHome } = {}) {
 	};
 }
 
-export async function clearTikHubCredential({ configHome } = {}) {
+export async function clearTikHubCredential({ configHome, projectRoot } = {}) {
+	const projectFile = getProjectCredentialPath(projectRoot);
+	if (projectFile) {
+		const existing = await readCredentialFile(projectFile);
+		if (existing) {
+			await writeCredentialFile(projectFile, {
+				...existing,
+				tikhubApiKey: "",
+			});
+		}
+		return projectFile;
+	}
 	const { file } = getCredentialPaths({ configHome });
 	await rm(file, { force: true });
 	return file;

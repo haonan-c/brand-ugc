@@ -10,17 +10,21 @@ npx -y skills@latest add haonan-c/brand-ugc \
   --agent codex --global --yes
 ```
 
-要求 Node.js `>=22.5.0`。TikHub 请求使用用户自己的 Key。优先在可信终端设置环境变量：
+要求 Node.js `>=22.5.0`。TikHub 请求使用用户自己的 Key。推荐先运行初始化：
 
 ```bash
-export TIKHUB_API_KEY="<YOUR_KEY>"
+python3 ~/.agents/skills/setup-brand-ugc/scripts/setup_check.py init \
+  --project-root "$PWD"
 ```
 
-也可在可信终端运行一条安全输入命令，输入内容不会显示，并会保存到本机受保护文件。切勿把 Key 放进聊天或命令参数：
+然后在可信编辑器中填写项目 `.brand_ugc/credentials.json` 的 `tikhubApiKey`。以后该项目会自动读取，不需要重复设置环境变量。也可运行隐藏输入命令更新同一文件：
 
 ```bash
-node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
+node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set \
+  --workspace "$PWD"
 ```
+
+环境变量 `TIKHUB_API_KEY` 仍可临时覆盖项目配置。切勿把 Key 放进聊天、日志或命令参数。
 
 ## 标准运行
 

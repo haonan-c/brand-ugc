@@ -15,9 +15,10 @@ description: Generate or edit 1K/2K images from prompts, local images, or public
 
 1. `EVOLINK_API_KEY`
 2. 兼容环境变量 `IMAGEGEN_API_KEY`
-3. `secrets/api_key.txt`
+3. 当前项目 `.brand_ugc/credentials.json` 中的 `evolinkApiKey`
+4. 兼容旧配置 `secrets/api_key.txt`
 
-环境变量名可兼容，密钥内容必须由 EvoLink 签发。不要显示或记录真实密钥。
+项目凭证模板由 `setup-brand-ugc init` 创建，只需填写一次；环境变量可用于临时覆盖。密钥内容必须由 EvoLink 签发，不要显示或记录真实密钥。
 
 ## 运行
 

@@ -27,6 +27,13 @@ from evolink_client import (  # noqa: E402
 class ApiKeyContractTests(unittest.TestCase):
     def test_api_key_migration_precedence_and_fallbacks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp) / "project"
+            project_credentials = project_root / ".brand_ugc" / "credentials.json"
+            project_credentials.parent.mkdir(parents=True)
+            project_credentials.write_text(
+                json.dumps({"schemaVersion": 1, "evolinkApiKey": "project-key"}),
+                encoding="utf-8",
+            )
             key_file = Path(tmp) / "api_key.txt"
             key_file.write_text("file-key\n", encoding="utf-8")
 
@@ -35,18 +42,22 @@ class ApiKeyContractTests(unittest.TestCase):
                 {"EVOLINK_API_KEY": "evolink-key", "IMAGEGEN_API_KEY": "legacy-key"},
                 clear=True,
             ):
-                self.assertEqual(load_api_key(key_file), "evolink-key")
+                self.assertEqual(load_api_key(key_file, project_root), "evolink-key")
 
             with patch.dict(os.environ, {"IMAGEGEN_API_KEY": "legacy-key"}, clear=True):
-                self.assertEqual(load_api_key(key_file), "legacy-key")
+                self.assertEqual(load_api_key(key_file, project_root), "legacy-key")
 
             with patch.dict(os.environ, {}, clear=True):
-                self.assertEqual(load_api_key(key_file), "file-key")
+                self.assertEqual(load_api_key(key_file, project_root), "project-key")
+
+            project_credentials.unlink()
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(load_api_key(key_file, project_root), "file-key")
 
             key_file.unlink()
             with patch.dict(os.environ, {}, clear=True):
                 with self.assertRaisesRegex(EvoLinkError, "EVOLINK_API_KEY"):
-                    load_api_key(key_file)
+                    load_api_key(key_file, project_root)
 
 
 class NativePayloadContractTests(unittest.TestCase):
