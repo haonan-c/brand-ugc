@@ -10,6 +10,7 @@ description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, 
 ## 核心规则
 
 - 一次只问一个问题；先确定用户要用哪些路径，再只检查和引导该路径需要的依赖与凭证。
+- 这是 Agent 主导的初始化流程：主动执行只读检查和无需凭证、无需付费的配置，不要只报告步骤或连续粘贴命令让用户自行收尾。
 - 从不要求用户把真实 API Key 粘贴进聊天记录或命令参数；写入凭证时始终通过标准输入。
 - 缺失的系统依赖只报告和给出安装命令，不代为静默安装、不修改系统或安全配置。
 - 已经配置好的凭证不覆盖，除非用户明确要求更换。
@@ -58,15 +59,13 @@ npx -y skills@latest add haonan-c/brand-ugc \
   unset EVOLINK_KEY
   ```
 
-**TikHub（选题雷达路径需要）**：如果 `credentials.tikhub.configured` 为 `false`，引导用户运行 `xhs-topic-radar` 自带的凭证命令（该 Skill 已负责 TikHub 凭证的读写，这里不重复实现）：
+**TikHub（选题雷达路径需要）**：如果 `credentials.tikhub.configured` 为 `false`，先由 Agent 运行 `key status`。若能展示用户可交互的终端，由 Agent 启动 `xhs-topic-radar` 的安全输入命令；否则只给用户下面这一条命令。用户只负责在终端输入 Key，其余验证和恢复原任务由 Agent 完成：
 
 ```bash
-read -s TIKHUB_KEY && printf '%s' "$TIKHUB_KEY" | \
-  node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
-unset TIKHUB_KEY
+node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
 ```
 
-配置后可用 `node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key status` 确认，不会显示明文。
+该命令会隐藏输入并写入本地受保护文件。用户下一次回复后，由 Agent 自动运行 `node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key status` 和本 Skill 的 `check` 确认，不要求用户自行验证、只回复“已配置”或重新描述原需求。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能代为保存该旧 Key。
 
 ### 4. 可选：创建第一个品牌档案
 
@@ -74,7 +73,7 @@ unset TIKHUB_KEY
 
 ### 5. 总结
 
-再次运行 `check` 确认状态，用一段简短总结告诉用户：哪些依赖已就绪、哪些凭证已配置、可以从 `$ask-brand`、`$xhs-topic-radar`、`$ugc-image-post` 或 `$ugc-storyboard` 中的哪一个开始。
+由 Agent 再次运行 `check` 确认状态，用一段简短总结告诉用户：哪些依赖已就绪、哪些凭证已配置、接下来将恢复哪个原任务。初始化由上游 Skill 触发时，直接恢复该任务，不要求用户重新选择入口。
 
 ## 依赖安装参考
 

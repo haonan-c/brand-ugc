@@ -214,10 +214,12 @@ Use $setup-brand-ugc to check dependencies and configure the credentials I need 
 I plan to use: image post (or short video / topic radar / all of them).
 ```
 
-It only checks, reports, and guides — it never produces content or calls a paid API. It
-asks which path you intend to use, checks only the system dependencies that path needs,
-reports which of the six production Skills are installed, and guides EvoLink or TikHub
-credential setup. It never asks you to paste a real key into chat.
+It never produces content or calls a paid API. It asks which path you intend to use,
+actively checks only the system dependencies that path needs, reports which of the six
+production Skills are installed, and completes every setup step that does not require a
+secret. For TikHub, the Agent starts or provides one hidden-input command; you enter the
+key only in a trusted terminal, then the Agent verifies it and resumes the original task.
+It never asks you to paste a real key into chat.
 
 ## Topic-radar workflow
 

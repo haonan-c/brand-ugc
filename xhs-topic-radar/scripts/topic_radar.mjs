@@ -20,13 +20,14 @@ import {
   saveWorkspaceConfig,
 } from "../lib/onboarding.mjs";
 import { finalizeReport } from "../lib/report.mjs";
+import { readHiddenLine } from "../lib/hidden-input.mjs";
 
 const HELP = `xhs-topic-radar
 
 Commands:
   setup    --workspace <brand-workspace> --industry <name> --lookback-days <1-180>
   config   --workspace <brand-workspace>
-  key set|status|clear
+  key set|status|clear  (key set prompts securely in an interactive terminal)
   preview  --workspace <brand-workspace> [--force]
   collect  --workspace <brand-workspace> --plan <plan.json> --approve [--force]
   finalize --workspace <brand-workspace> --run-id <id> --topics-file <topics.json>
@@ -107,7 +108,7 @@ async function credential() {
   const value = await loadTikHubCredential();
   if (!value) {
     throw new Error(
-      "TikHub API Key is not configured. Use TIKHUB_API_KEY or pipe the key to 'key set'.",
+      "TikHub API Key is not configured. Use TIKHUB_API_KEY or run 'key set' in an interactive terminal.",
     );
   }
   return value;
@@ -148,10 +149,9 @@ async function showConfig(options) {
 async function keyCommand(options) {
   const action = options._[0] ?? "status";
   if (action === "set") {
-    if (process.stdin.isTTY) {
-      throw new Error("Pipe the TikHub API Key to stdin; command-line key arguments are refused.");
-    }
-    const value = await readStdin();
+    const value = process.stdin.isTTY
+      ? await readHiddenLine({ prompt: "TikHub API Key（输入内容不会显示）: " })
+      : await readStdin();
     const saved = await saveTikHubCredential(value);
     output({
       ok: true,
