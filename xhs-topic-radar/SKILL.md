@@ -122,6 +122,19 @@ Return only a short summary with:
 
 Do not paste the full report into chat.
 
+### 8. Offer to feed insights back (optional)
+
+After the report is complete, offer once to distil this run's consumer language into
+the brand's `insights.json`. Skip silently when the user has no brand profile or
+declines. Follow `references/insights-feedback.md`: build a `platform_radar` patch
+from the evidence pack's comments and the finalized strategy cards, show the user
+which entries would be added or re-confirmed, and only then call `brand-profile`'s
+`insights-merge`.
+
+Never write `differentiation` from platform data, never store raw comment text or
+author identifiers, and never let accumulated insights drive topic generation in
+step 5 — they may filter or rank topics, never produce them.
+
 ## Inspection and recovery
 
 ```bash
@@ -137,4 +150,4 @@ A failed or interrupted run remains inspectable in SQLite and local files. Reuse
 
 After the user chooses one finalized strategy card, pass only that card and verified brand facts into a separate `ugc-image-post` or `ugc-storyboard` run. Do not silently begin paid content generation, and do not mix topic-radar state with production run directories.
 
-Detailed state and safety rules are in `references/workflow-contract.md`; field guidance is in `references/topic-card-contract.md`.
+Detailed state and safety rules are in `references/workflow-contract.md`; field guidance is in `references/topic-card-contract.md`; insight feedback rules are in `references/insights-feedback.md`.

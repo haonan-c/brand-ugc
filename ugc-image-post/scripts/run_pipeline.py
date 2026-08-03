@@ -144,6 +144,60 @@ def validate_plan(plan: dict[str, Any]) -> None:
             raise PipelineError(f"第 {expected} 页引用了未列入 facts_used 的事实。")
 
 
+INSIGHT_SECTIONS = ("audience_insights", "content_pillars", "differentiation")
+
+
+def _load_brand_insights(profile_path: Path) -> dict[str, Any] | None:
+    """品牌洞察与 profile.json 同目录，由 brand-profile 维护；没有就跳过。"""
+    insights_path = profile_path.with_name("insights.json")
+    if not insights_path.is_file():
+        return None
+    return read_json(insights_path)
+
+
+def _select_insights(insights: dict[str, Any], product_id: str) -> dict[str, Any]:
+    """保留品牌级条目（product_ids 为空）和命中当前产品的条目。"""
+    selected: dict[str, Any] = {}
+    for section in INSIGHT_SECTIONS:
+        entries = [
+            entry
+            for entry in insights.get(section, [])
+            if isinstance(entry, dict)
+            and (not entry.get("product_ids") or product_id in entry["product_ids"])
+        ]
+        if entries:
+            selected[section] = entries
+    language_bank = insights.get("language_bank")
+    if language_bank:
+        selected["language_bank"] = language_bank
+    return selected
+
+
+def _validate_hook_basis(plan: dict[str, Any], insights: dict[str, Any]) -> None:
+    """有洞察可用时，封面钩子必须指向某条真实痛点或内容支柱。"""
+    allowed = {
+        point
+        for entry in insights.get("audience_insights", [])
+        for point in entry.get("pain_points", [])
+    } | {
+        entry["pillar"]
+        for entry in insights.get("content_pillars", [])
+        if isinstance(entry.get("pillar"), str)
+    }
+    if not allowed:
+        return
+    hook_basis = plan.get("hook_basis")
+    if not isinstance(hook_basis, str) or not hook_basis.strip():
+        raise PipelineError(
+            "品牌洞察可用时，内容方案必须提供 hook_basis，指向一条 "
+            "audience_insights.pain_points 或 content_pillars。"
+        )
+    if hook_basis not in allowed:
+        raise PipelineError(
+            f"hook_basis“{hook_basis}”不在当前产品可用的品牌洞察中。"
+        )
+
+
 def _resolve_brand_context(
     args: argparse.Namespace,
     plan: dict[str, Any],
@@ -156,6 +210,7 @@ def _resolve_brand_context(
         return None
     profile_path = Path(args.brand_profile_file).expanduser().resolve()
     profile = read_json(profile_path)
+    insights = _load_brand_insights(profile_path)
     products = profile.get("products")
     if not isinstance(products, list):
         raise PipelineError("品牌档案 products 必须是数组。")
@@ -186,7 +241,7 @@ def _resolve_brand_context(
     for item in plan["facts_used"]:
         if item["fact"] in prohibited:
             raise PipelineError(f"事实“{item['fact']}”命中品牌禁用表达。")
-    return {
+    context = {
         "schema_version": profile.get("schema_version", 1),
         "brand_id": profile.get("brand_id", ""),
         "brand_name": profile.get("brand_name", ""),
@@ -197,6 +252,12 @@ def _resolve_brand_context(
         "defaults": profile.get("defaults", {}),
         "product": product,
     }
+    if insights is not None:
+        selected = _select_insights(insights, product.get("product_id", ""))
+        if selected:
+            context["insights"] = selected
+            _validate_hook_basis(plan, selected)
+    return context
 
 
 def render_plan_markdown(plan: dict[str, Any]) -> str:
@@ -206,6 +267,10 @@ def render_plan_markdown(plan: dict[str, Any]) -> str:
         f"- 结构迁移说明：{plan['adaptation_summary']}",
         f"- 选定标题：{plan['selected_title']}",
         f"- CTA：{plan['cta']}",
+    ]
+    if plan.get("hook_basis"):
+        lines.append(f"- 钩子依据：{plan['hook_basis']}")
+    lines += [
         "",
         "## 标题候选",
         "",

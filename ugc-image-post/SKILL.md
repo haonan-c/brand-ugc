@@ -36,6 +36,8 @@ description: Analyze one benchmark image post and its copy, then create a brande
 - 恰好生成三个标题候选，只选择一个进入视觉生产。
 - 每项事实记录来源和证据。
 - 品牌档案决定表达；对标内容只提供方法。
+- 品牌档案同目录存在 `insights.json` 时，封面钩子必须来自其中的人群痛点或内容
+  支柱，并写入 `hook_basis`。
 - 真实产品合成使用 `real_composite`；只有必须交互时使用 `ai_interaction`。
 - 版式只能从 `references/layouts.md` 的受控组件中选择。
 

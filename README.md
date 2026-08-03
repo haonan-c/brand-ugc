@@ -283,10 +283,19 @@ product claims under:
 
 ```text
 .brand_ugc/brands/<brand-id>/profile.json
+.brand_ugc/brands/<brand-id>/insights.json
 ```
 
 Multiple brands and products are supported. Task overrides do not silently rewrite
 the saved profile. Every verified claim must include evidence.
+
+`insights.json` holds the consumer insights that keep evolving: audience pain points,
+usage scenarios, purchase objections, native consumer phrasing, and content pillars.
+It is fed by three channels — operator interviews, local assets, and topic-radar
+feedback — each of which produces a patch that is merged only after the user confirms
+it. Confidence rises automatically when the same insight is observed again from a
+different channel. When insights exist, an image-post cover hook must point at one of
+their pain points or content pillars.
 
 ## Inputs and outputs
 
