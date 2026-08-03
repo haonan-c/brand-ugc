@@ -11,7 +11,7 @@ description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, 
 
 - 一次只问一个问题；先确定用户要用哪些路径，再只检查和引导该路径需要的依赖与凭证。
 - 这是 Agent 主导的初始化流程：主动执行只读检查和无需凭证、无需付费的配置，不要只报告步骤或连续粘贴命令让用户自行收尾。
-- 从不要求用户把真实 API Key 粘贴进聊天记录或命令参数；写入凭证时始终通过标准输入。
+- 从不要求用户把真实 API Key 粘贴进聊天记录、命令参数或 Agent 可读取的输入；默认由用户在可信编辑器中填写项目凭证文件。
 - 缺失的系统依赖只报告和给出安装命令，不代为静默安装、不修改系统或安全配置。
 - 已经配置好的凭证不覆盖，除非用户明确要求更换。
 - 创建品牌档案是可选步骤，由用户决定是否现在做；setup 完成不等于已经有品牌档案。
@@ -72,11 +72,7 @@ npx -y skills@latest add haonan-c/brand-ugc \
 export EVOLINK_API_KEY="<用户自己的 Key>"
 ```
 
-**TikHub（选题雷达路径需要）**：填写 `tikhubApiKey`。也可继续使用隐藏输入命令，它会更新同一个项目凭证文件：
-
-```bash
-node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set --workspace "$PWD"
-```
+**TikHub（选题雷达路径需要）**：填写 `tikhubApiKey`。不要由 Agent 启动隐藏输入命令或要求用户去终端输入；应直接提示上面的项目凭证文件绝对路径。
 
 用户下一次回复后，由 Agent 自动运行带同一 `--workspace` 的 `key status` 和本 Skill 的 `check`。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能写入项目文件。
 

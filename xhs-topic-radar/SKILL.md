@@ -43,15 +43,9 @@ First run `key status` yourself with the brand workspace. Credential precedence 
 node scripts/topic_radar.mjs key status --workspace "/absolute/brand/workspace"
 ```
 
-If the project file does not exist, use `setup-brand-ugc init` to create its protected template and ask the user to fill `tikhubApiKey` once in a trusted editor. Every later radar command reads it automatically. Alternatively, start the hidden-input command below; it updates the same project file:
+If the project file does not exist, use `setup-brand-ugc init` to create its protected template. When the key is missing, do not start `key set`, hidden input, or any process that waits on terminal input, and do not recommend an environment variable by default. Tell the user to open the exact absolute path `<brand-workspace>/.brand_ugc/credentials.json` in a trusted editor and fill only `tikhubApiKey`. Then stop without reading the file contents or asking the user to paste the key, run a command, reply with an exact phrase, or restate the request.
 
-```bash
-node scripts/topic_radar.mjs key set --workspace "/absolute/brand/workspace"
-```
-
-If you cannot expose an interactive terminal, give only that one command for the user to run in a trusted terminal. Do not ask them to paste the key into chat, repeat the shell-pipeline form, run `key status`, or reply with an exact phrase. On their next message, run `key status` yourself. Once configured, continue automatically with the original topic-radar request without asking them to restate it.
-
-For non-interactive automation, `key set` still accepts the key through stdin. Omitting `--workspace` preserves the legacy user-level behavior. It never accepts a key as a command-line argument.
+On the user's next message, run `key status` yourself. Once configured, continue automatically with the original topic-radar request. The CLI's `key set` command remains a compatibility feature only; use it solely when the user explicitly requests terminal-based credential entry.
 
 ### 3. Preview demand terms, then stop
 

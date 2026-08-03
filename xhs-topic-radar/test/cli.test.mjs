@@ -97,4 +97,32 @@ test("key commands use project credentials when workspace is provided", async ()
   const status = JSON.parse(statusResult.stdout);
   assert.equal(status.configured, true);
   assert.equal(status.source, "project-file");
+  assert.equal(
+    status.configurationPath,
+    join(workspace, ".brand_ugc", "credentials.json"),
+  );
+});
+
+test("missing project key points to the credential file without terminal input", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "brand-topic-missing-key-"));
+  const configHome = await mkdtemp(join(tmpdir(), "brand-topic-empty-config-"));
+  const env = { XDG_CONFIG_HOME: configHome, TIKHUB_API_KEY: "" };
+  const setupResult = run([
+    "setup",
+    "--workspace",
+    workspace,
+    "--industry",
+    "软著",
+    "--lookback-days",
+    "7",
+  ], { env });
+  assert.equal(setupResult.status, 0, setupResult.stderr);
+
+  const result = run(["preview", "--workspace", workspace], { env });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, new RegExp(
+    join(workspace, ".brand_ugc", "credentials.json").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  ));
+  assert.match(result.stderr, /tikhubApiKey/);
+  assert.doesNotMatch(result.stderr, /key set|interactive terminal|终端输入/i);
 });

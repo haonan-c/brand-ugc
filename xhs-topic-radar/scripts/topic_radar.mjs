@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { loadConfig, loadDefaultConfig } from "../lib/config.mjs";
 import {
   clearTikHubCredential,
+  getProjectCredentialPath,
   loadTikHubCredential,
   saveTikHubCredential,
 } from "../lib/credentials.mjs";
@@ -106,10 +107,11 @@ function requireSetup(workspace) {
 }
 
 async function credential(options) {
-  const value = await loadTikHubCredential({ projectRoot: brandWorkspace(options) });
+  const projectRoot = brandWorkspace(options);
+  const value = await loadTikHubCredential({ projectRoot });
   if (!value) {
     throw new Error(
-      "TikHub API Key is not configured. Use TIKHUB_API_KEY or run 'key set' in an interactive terminal.",
+      `缺少 TikHub API Key。请在 ${getProjectCredentialPath(projectRoot)} 的 tikhubApiKey 字段中配置后重试；不要通过聊天或命令参数提供 Key。`,
     );
   }
   return value;
@@ -176,6 +178,9 @@ async function keyCommand(options) {
       masked: value?.masked ?? null,
       source: value?.source ?? null,
       path: value?.path ?? null,
+      configurationPath: options.workspace
+        ? getProjectCredentialPath(brandWorkspace(options))
+        : null,
     });
     return;
   }
