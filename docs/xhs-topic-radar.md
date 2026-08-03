@@ -16,12 +16,10 @@ npx -y skills@latest add haonan-c/brand-ugc \
 export TIKHUB_API_KEY="<YOUR_KEY>"
 ```
 
-也可通过标准输入保存到本机受保护文件，切勿把 Key 放进聊天或命令参数：
+也可在可信终端运行一条安全输入命令，输入内容不会显示，并会保存到本机受保护文件。切勿把 Key 放进聊天或命令参数：
 
 ```bash
-read -s TIKHUB_KEY && printf '%s' "$TIKHUB_KEY" | \
-  node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
-unset TIKHUB_KEY
+node ~/.agents/skills/xhs-topic-radar/scripts/topic_radar.mjs key set
 ```
 
 ## 标准运行

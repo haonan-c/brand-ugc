@@ -44,7 +44,7 @@ Administrative pricing/balance requests are not included in the business-request
 
 ## Credentials and logs
 
-Credential precedence is environment variable, then the protected local credential file. The local directory is mode `0700`; the file is mode `0600`. The CLI accepts a new key only through stdin. Error cleanup redacts authorization values and `TIKHUB_API_KEY` assignments.
+Credential precedence is environment variable, then the protected local credential file. The local directory is mode `0700`; the file is mode `0600`. In an interactive terminal, `key set` reads with echo disabled; in automation it accepts a new key only through stdin. It never accepts a key as a command-line argument. Error cleanup redacts authorization values and `TIKHUB_API_KEY` assignments.
 
 Do not print raw authorization headers, full keys, Base64 data, or temporary URLs.
 

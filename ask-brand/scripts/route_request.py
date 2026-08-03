@@ -23,6 +23,7 @@ IMAGE_PRODUCTION_TERMS = IMAGE_TERMS - {"小红书", "笔记"}
 VIDEO_TERMS = {"视频", "短视频", "分镜", "seedance", "storyboard", "video"}
 PROFILE_TERMS = {"品牌档案", "品牌规范", "品牌语气", "brand profile", "brand kit"}
 RADAR_TERMS = {
+    "选题",
     "选题雷达",
     "每日选题",
     "生成选题",
@@ -115,7 +116,7 @@ def route(args: argparse.Namespace) -> dict[str, Any]:
             status="ready",
             intent="topic_research",
             skill="xhs-topic-radar",
-            reason="用户明确要求选题雷达、每日选题、需求词或话题研究。",
+            reason="用户明确要求选题、选题雷达、需求词或话题研究。",
         )
     if wants_image and wants_video:
         return _decision(

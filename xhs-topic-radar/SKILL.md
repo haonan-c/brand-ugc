@@ -11,7 +11,7 @@ Use this Skill for topic discovery and evidence-backed planning. It does not pub
 
 - Node.js `>=22.5.0` is required (`node:sqlite` is used).
 - TikHub access requires the user's own `TIKHUB_API_KEY`.
-- Never ask the user to paste a real key into chat, logs, screenshots, or command-line arguments.
+- Never ask the user to paste a real key into chat, logs, screenshots, or command-line arguments. If one is exposed there, do not use it; require revocation and a fresh key.
 - State is local to `<brand-workspace>/.brand_ugc/topic-radar/`.
 
 Resolve every relative path in this file against this Skill directory. The CLI is:
@@ -37,19 +37,21 @@ Software-copyright industries keep the 4/3/3 audience quotas for students, high-
 
 ### 2. Configure the TikHub key safely
 
-Prefer an existing `TIKHUB_API_KEY` environment variable. Otherwise instruct the user to run this themselves in a trusted terminal; the key is read from stdin and never accepted as an argument:
-
-```bash
-read -s TIKHUB_KEY && printf '%s' "$TIKHUB_KEY" | \
-  node scripts/topic_radar.mjs key set
-unset TIKHUB_KEY
-```
-
-Check without exposing the key:
+First run `key status` yourself. Prefer an existing `TIKHUB_API_KEY` environment variable. If no credential exists, take ownership of the initialization flow instead of stopping with a list of commands:
 
 ```bash
 node scripts/topic_radar.mjs key status
 ```
+
+When a user-visible interactive terminal is available, start the following command and ask the user to enter a fresh key there. The CLI hides the input and saves it to the protected local credential file:
+
+```bash
+node scripts/topic_radar.mjs key set
+```
+
+If you cannot expose an interactive terminal, give only that one command for the user to run in a trusted terminal. Do not ask them to paste the key into chat, repeat the shell-pipeline form, run `key status`, or reply with an exact phrase. On their next message, run `key status` yourself. Once configured, continue automatically with the original topic-radar request without asking them to restate it.
+
+For non-interactive automation, `key set` still accepts the key through stdin. It never accepts a key as a command-line argument.
 
 ### 3. Preview demand terms, then stop
 
