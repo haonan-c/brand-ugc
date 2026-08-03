@@ -17,7 +17,7 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 INSIGHT_SOURCES = ("interview", "local_asset", "platform_radar")
 REF_FIELDS = ("run_id", "note_urls", "note")
 LANGUAGE_BANK_FIELDS = ("voice_samples", "hook_patterns", "avoid_patterns")
-MAX_REFS = 10
+MAX_OBSERVATIONS = 10
 
 # 每个洞察分区的合并方式：key_fields 决定同一条目，list_fields 取并集，
 # text_fields 由最新一次观察覆盖。
@@ -179,30 +179,33 @@ def _merge_provenance(
     observed_at: str,
     ref: dict[str, Any] | None,
 ) -> dict[str, Any]:
+    observation = {"source": source, "observed_at": observed_at}
+    if ref is not None:
+        observation["ref"] = ref
     if existing is None:
         sources = [source]
         observed_count = 1
         first_seen = observed_at
         last_seen = observed_at
-        refs: list[dict[str, Any]] = []
+        observations = [observation]
     else:
+        observations = list(existing.get("observations", []))
+        if observation in observations:
+            # 同一次观察被重复合并（例如误跑两次同一份补丁），不重复计数。
+            return dict(existing)
         sources = _union(existing.get("sources", []), [source])
         observed_count = int(existing.get("observed_count", 1)) + 1
         first_seen = min(existing.get("first_seen", observed_at), observed_at)
         last_seen = max(existing.get("last_seen", observed_at), observed_at)
-        refs = list(existing.get("refs", []))
-    if ref is not None and ref not in refs:
-        refs = [*refs, ref][-MAX_REFS:]
-    provenance = {
+        observations = [*observations, observation][-MAX_OBSERVATIONS:]
+    return {
         "sources": sources,
         "observed_count": observed_count,
         "first_seen": first_seen,
         "last_seen": last_seen,
         "confidence": _confidence(sources, observed_count),
+        "observations": observations,
     }
-    if refs:
-        provenance["refs"] = refs
-    return provenance
 
 
 def _entry_key(entry: dict[str, Any], key_fields: tuple[str, ...]) -> tuple[str, ...]:

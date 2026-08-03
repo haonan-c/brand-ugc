@@ -59,7 +59,11 @@
 - 列表字段取并集，保留历史观察。
 - `evidence` 由最新一次观察覆盖。
 - `observed_count` 加一，`first_seen` 和 `last_seen` 扩展区间，`sources` 取并集。
-- `refs` 最多保留最近 10 条。
+- `observations` 追加一条 `{source, observed_at, ref}`，最多保留最近 10 条。
+
+`observations` 同时是去重台账：`source`、`observed_at` 和 `ref` 完全相同的观察
+只计一次，重复合并同一份补丁不会抬高 `observed_count` 和 `confidence`。同一天
+同一来源要记成两次观察，必须用 `ref` 区分。
 
 `confidence` 由出现次数和来源多样性推导，不接受人工指定：
 

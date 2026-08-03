@@ -77,8 +77,10 @@ python3 scripts/manage_profile.py insights-show \
   --output-root ".brand_ugc"
 ```
 
-同一条洞察重复被观察到会累加 `observed_count` 并提升 `confidence`，所以重复合并
-是预期行为，不是错误。`platform_radar` 反映品类需求而非本品牌评价，不能写入
+同一条洞察被**不同**观察重复命中会累加 `observed_count` 并提升 `confidence`，
+所以多次合并是预期行为，不是错误；但 `source`、`observed_at` 和 `ref` 完全相同
+的观察只计一次，误跑两次同一份补丁不会抬高置信度。`platform_radar` 反映品类需求
+而非本品牌评价，不能写入
 `differentiation`。回流平台内容时只保留归纳表述和短语级原话，不保存评论原文和
 作者标识。
 

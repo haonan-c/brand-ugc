@@ -109,9 +109,57 @@ class BrandInsightsCliTests(unittest.TestCase):
         self.assertEqual(provenance["first_seen"], "2026-07-20")
         self.assertEqual(provenance["last_seen"], "2026-08-03")
         self.assertEqual(provenance["confidence"], "medium")
-        self.assertEqual(provenance["refs"], [
-            {"run_id": "run-01", "note_urls": ["https://example.com/n/1"]}
+        self.assertEqual(provenance["observations"], [
+            {"source": "interview", "observed_at": "2026-07-20"},
+            {
+                "source": "platform_radar",
+                "observed_at": "2026-08-03",
+                "ref": {"run_id": "run-01", "note_urls": ["https://example.com/n/1"]},
+            },
         ])
+
+    def test_merging_the_same_patch_twice_does_not_raise_confidence(self) -> None:
+        patch = {
+            "brand_id": "north-star",
+            "source": "interview",
+            "observed_at": "2026-08-03",
+            "audience_insights": [
+                {
+                    "audience": "熬夜加班的25-30岁女性",
+                    "pain_points": ["第二天全脸暗沉"],
+                }
+            ],
+        }
+        first = self._merge(patch, "again.json")
+        second = self._merge(patch, "again.json")
+
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        provenance = json.loads(second.stdout)["audience_insights"][0]["provenance"]
+        self.assertEqual(provenance["observed_count"], 1)
+        self.assertEqual(provenance["confidence"], "low")
+        self.assertEqual(
+            provenance["observations"],
+            [{"source": "interview", "observed_at": "2026-08-03"}],
+        )
+
+    def test_same_day_source_counts_twice_when_refs_differ(self) -> None:
+        for run_id in ("run-01", "run-02"):
+            merged = self._merge(
+                {
+                    "brand_id": "north-star",
+                    "source": "platform_radar",
+                    "observed_at": "2026-08-03",
+                    "ref": {"run_id": run_id},
+                    "audience_insights": [{"audience": "通勤人群"}],
+                },
+                f"{run_id}.json",
+            )
+            self.assertEqual(merged.returncode, 0, merged.stderr)
+
+        provenance = json.loads(merged.stdout)["audience_insights"][0]["provenance"]
+        self.assertEqual(provenance["observed_count"], 2)
+        self.assertEqual(provenance["confidence"], "medium")
 
     def test_three_observations_across_two_sources_reach_high_confidence(self) -> None:
         for index, source in enumerate(("interview", "platform_radar", "platform_radar")):
