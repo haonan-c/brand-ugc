@@ -63,11 +63,19 @@
       "properties": {
         "voice_samples": {"$ref": "#/$defs/phrases"},
         "hook_patterns": {"$ref": "#/$defs/phrases"},
+        "title_formulas": {"$ref": "#/$defs/title_formulas"},
         "avoid_patterns": {"$ref": "#/$defs/phrases"}
       }
     }
   },
   "$defs": {
+    "title_formulas": {
+      "description": "受控标题公式，与 xhs-topic-radar 策略卡的 titlePattern 取值一致。",
+      "type": "array",
+      "items": {
+        "enum": ["number", "question", "pain-point", "result", "urgency", "authority"]
+      }
+    },
     "phrases": {
       "type": "array",
       "items": {"type": "string", "minLength": 1}

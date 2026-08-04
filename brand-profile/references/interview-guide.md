@@ -58,7 +58,10 @@
 ### 表达库（`language_bank`）
 
 - `voice_samples`：品牌已发布内容里，自己觉得写得最对味的句子。
-- `hook_patterns`：过去用过且有效的开头句式。
+- `hook_patterns`：过去用过且有效的开头句式，记原句，不要归纳成书面语。
+- `title_formulas`：这些有效标题属于哪种公式，只填 `number`、`question`、
+  `pain-point`、`result`、`urgency`、`authority`。问的是结构，不是句子；用户说不
+  清就别硬套。
 - `avoid_patterns`：明确不想出现的表达（区别于 `compliance` 的合规红线，这里是
   风格取向）。
 

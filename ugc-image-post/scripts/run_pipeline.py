@@ -145,6 +145,8 @@ def validate_plan(plan: dict[str, Any]) -> None:
 
 
 INSIGHT_SECTIONS = ("audience_insights", "content_pillars", "differentiation")
+# 与 brand-profile 保持一致的洞察排序档位；置信度相同时再比 last_seen 新鲜度。
+CONFIDENCE_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def _load_brand_insights(profile_path: Path) -> dict[str, Any] | None:
@@ -155,8 +157,17 @@ def _load_brand_insights(profile_path: Path) -> dict[str, Any] | None:
     return read_json(insights_path)
 
 
+def _insight_priority(entry: dict[str, Any]) -> tuple[int, int]:
+    """先看有多可靠，同样可靠的看谁更新；缺 provenance 的排最后。"""
+    provenance = entry.get("provenance") or {}
+    rank = CONFIDENCE_ORDER.get(provenance.get("confidence"), len(CONFIDENCE_ORDER))
+    digits = str(provenance.get("last_seen") or "").replace("-", "")
+    recency = -int(digits) if digits.isdigit() else 0
+    return (rank, recency)
+
+
 def _select_insights(insights: dict[str, Any], product_id: str) -> dict[str, Any]:
-    """保留品牌级条目（product_ids 为空）和命中当前产品的条目。"""
+    """保留品牌级条目（product_ids 为空）和命中当前产品的条目，并按优先级排序。"""
     selected: dict[str, Any] = {}
     for section in INSIGHT_SECTIONS:
         entries = [
@@ -166,7 +177,7 @@ def _select_insights(insights: dict[str, Any], product_id: str) -> dict[str, Any
             and (not entry.get("product_ids") or product_id in entry["product_ids"])
         ]
         if entries:
-            selected[section] = entries
+            selected[section] = sorted(entries, key=_insight_priority)
     language_bank = insights.get("language_bank")
     if language_bank:
         selected["language_bank"] = language_bank
@@ -195,6 +206,28 @@ def _validate_hook_basis(plan: dict[str, Any], insights: dict[str, Any]) -> None
     if hook_basis not in allowed:
         raise PipelineError(
             f"hook_basis“{hook_basis}”不在当前产品可用的品牌洞察中。"
+        )
+
+
+def _validate_hook_pattern(plan: dict[str, Any], insights: dict[str, Any]) -> None:
+    """品牌沉淀过钩子句式时，封面第一句必须复用其中一条。"""
+    allowed = {
+        pattern
+        for pattern in insights.get("language_bank", {}).get("hook_patterns", [])
+        if isinstance(pattern, str)
+    }
+    if not allowed:
+        return
+    hook_pattern = plan.get("hook_pattern_used")
+    if not isinstance(hook_pattern, str) or not hook_pattern.strip():
+        raise PipelineError(
+            "品牌洞察含 language_bank.hook_patterns 时，内容方案必须提供 "
+            "hook_pattern_used，指向其中一条钩子句式。"
+        )
+    if hook_pattern not in allowed:
+        raise PipelineError(
+            f"hook_pattern_used“{hook_pattern}”不在品牌的 "
+            "language_bank.hook_patterns 中。"
         )
 
 
@@ -257,6 +290,7 @@ def _resolve_brand_context(
         if selected:
             context["insights"] = selected
             _validate_hook_basis(plan, selected)
+            _validate_hook_pattern(plan, selected)
     return context
 
 
@@ -270,6 +304,8 @@ def render_plan_markdown(plan: dict[str, Any]) -> str:
     ]
     if plan.get("hook_basis"):
         lines.append(f"- 钩子依据：{plan['hook_basis']}")
+    if plan.get("hook_pattern_used"):
+        lines.append(f"- 钩子句式：{plan['hook_pattern_used']}")
     lines += [
         "",
         "## 标题候选",

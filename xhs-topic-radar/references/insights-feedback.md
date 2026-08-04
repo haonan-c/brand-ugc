@@ -39,12 +39,29 @@
 | 策略卡字段 | 目标字段 |
 | --- | --- |
 | `demandKeywords` | `native_phrases` |
-| `hook`、`titlePattern`、`titleAlternatives` | `language_bank.hook_patterns` |
+| `hook`、`titleAlternatives` | `language_bank.hook_patterns` |
+| `titlePattern` | `language_bank.title_formulas` |
 | `userQuestion` | `pain_points` 或 `objections` |
 | `contentGap`、`angle`、`targetScenario` | `content_pillars` |
 | `doNotSay` | `language_bank.avoid_patterns` |
 
 `demandKeywords` 来自真实搜索联想，是质量最高的消费者语言，优先回流。
+
+`hook` 和 `titlePattern` 抽象层级不同，不要写进同一个字段。`hook` 与
+`titleAlternatives` 是具体句子，进 `hook_patterns`；`titlePattern` 是受控枚举，
+进 `title_formulas`，原样回流枚举值，不要翻译成中文。
+
+## 互动量级门槛
+
+只回流跑得动的句式：`hook` 和 `titleAlternatives` 只取证据包里互动量级排在前列
+的笔记，低互动笔记的句式不回流。品牌的 `hook_patterns` 因此天然只沉淀高互动来源，
+不需要在洞察里保存分数。
+
+`titlePattern` 同样只从达标笔记回流。同一个公式被多次回流是预期行为——它反映的正
+是这个品牌品类里什么标题结构反复有效。
+
+这个筛选发生在回流这一刻，不可回溯：被筛掉的句式不会留下记录，日后想放宽门槛只能
+重跑雷达。
 
 ## 硬约束
 
@@ -83,7 +100,10 @@
       "native_phrases": ["急救", "回血"]
     }
   ],
-  "language_bank": {"hook_patterns": ["第二天不垮脸"]}
+  "language_bank": {
+    "hook_patterns": ["第二天不垮脸"],
+    "title_formulas": ["pain-point"]
+  }
 }
 ```
 

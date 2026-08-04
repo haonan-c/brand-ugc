@@ -26,6 +26,7 @@
     },
     "selected_title": {"type": "string", "minLength": 1},
     "hook_basis": {"type": "string", "minLength": 1},
+    "hook_pattern_used": {"type": "string", "minLength": 1},
     "body_copy": {"type": "string", "minLength": 1},
     "hashtags": {"type": "array", "items": {"type": "string", "minLength": 1}},
     "cta": {"type": "string"},

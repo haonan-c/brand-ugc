@@ -256,6 +256,89 @@ class BrandInsightsCliTests(unittest.TestCase):
         self.assertEqual(resolved.returncode, 0, resolved.stderr)
         self.assertNotIn("insights", json.loads(resolved.stdout))
 
+    def _observe(self, audience: str, source: str, observed_at: str, name: str) -> None:
+        merged = self._merge(
+            {
+                "brand_id": "north-star",
+                "source": source,
+                "observed_at": observed_at,
+                "audience_insights": [{"audience": audience}],
+            },
+            name=name,
+        )
+        self.assertEqual(merged.returncode, 0, merged.stderr)
+
+    def test_resolve_ranks_insights_by_confidence_then_recency(self) -> None:
+        # 两条 high 置信度条目，last_seen 一早一晚；外加一条最新但只观察过一次的。
+        for index, (audience, source, observed_at) in enumerate(
+            [
+                ("久经验证的老方向", "interview", "2026-01-01"),
+                ("久经验证的老方向", "local_asset", "2026-01-02"),
+                ("久经验证的老方向", "platform_radar", "2026-01-03"),
+                ("同样验证过的新方向", "interview", "2026-02-01"),
+                ("同样验证过的新方向", "local_asset", "2026-02-02"),
+                ("同样验证过的新方向", "platform_radar", "2026-02-03"),
+                ("刚冒头的单次观察", "interview", "2026-03-01"),
+            ]
+        ):
+            self._observe(audience, source, observed_at, f"rank-{index}.json")
+
+        resolved = _run(
+            "resolve",
+            "--brand-id",
+            "north-star",
+            "--product-id",
+            "daily-serum",
+            "--output-root",
+            str(self.output_root),
+        )
+
+        self.assertEqual(resolved.returncode, 0, resolved.stderr)
+        insights = json.loads(resolved.stdout)["insights"]
+        self.assertEqual(
+            [item["audience"] for item in insights["audience_insights"]],
+            ["同样验证过的新方向", "久经验证的老方向", "刚冒头的单次观察"],
+        )
+
+    def test_title_formulas_merge_as_a_union_of_controlled_values(self) -> None:
+        first = self._merge(
+            {
+                "brand_id": "north-star",
+                "source": "platform_radar",
+                "language_bank": {
+                    "hook_patterns": ["第二天不垮脸"],
+                    "title_formulas": ["pain-point"],
+                },
+            }
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+
+        second = self._merge(
+            {
+                "brand_id": "north-star",
+                "source": "interview",
+                "language_bank": {"title_formulas": ["number", "pain-point"]},
+            },
+            name="second.json",
+        )
+
+        self.assertEqual(second.returncode, 0, second.stderr)
+        bank = json.loads(second.stdout)["language_bank"]
+        self.assertEqual(bank["title_formulas"], ["pain-point", "number"])
+        self.assertEqual(bank["hook_patterns"], ["第二天不垮脸"])
+
+    def test_title_formulas_outside_the_controlled_enum_are_rejected(self) -> None:
+        merged = self._merge(
+            {
+                "brand_id": "north-star",
+                "source": "platform_radar",
+                "language_bank": {"title_formulas": ["痛点式"]},
+            }
+        )
+
+        self.assertEqual(merged.returncode, 2)
+        self.assertIn("title_formulas", merged.stderr)
+
     def test_merge_requires_an_existing_brand_profile(self) -> None:
         patch_file = self.root / "orphan.json"
         patch_file.write_text(

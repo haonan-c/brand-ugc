@@ -34,7 +34,10 @@ def _profile() -> dict:
     }
 
 
-def _insights(product_ids: list[str] | None = None) -> dict:
+def _insights(
+    product_ids: list[str] | None = None,
+    hook_patterns: list[str] | None = None,
+) -> dict:
     entry = {
         "audience": "熬夜加班的25-30岁女性",
         "pain_points": ["第二天全脸暗沉"],
@@ -48,11 +51,14 @@ def _insights(product_ids: list[str] | None = None) -> dict:
     }
     if product_ids is not None:
         entry["product_ids"] = product_ids
-    return {
+    insights = {
         "schema_version": 1,
         "brand_id": "north-star",
         "audience_insights": [entry],
     }
+    if hook_patterns is not None:
+        insights["language_bank"] = {"hook_patterns": hook_patterns}
+    return insights
 
 
 class ImagePostBrandInsightsTests(unittest.TestCase):
@@ -63,11 +69,14 @@ class ImagePostBrandInsightsTests(unittest.TestCase):
         insights: dict | None,
         hook_basis: str | None,
         run_name: str,
+        hook_pattern: str | None = None,
     ) -> subprocess.CompletedProcess:
         reference, product, copy_file, plan_file = _write_inputs(root)
         plan = _plan()
         if hook_basis is not None:
             plan["hook_basis"] = hook_basis
+        if hook_pattern is not None:
+            plan["hook_pattern_used"] = hook_pattern
         plan_file.write_text(json.dumps(plan, ensure_ascii=False), encoding="utf-8")
 
         brand_dir = root / "brands" / "north-star"
@@ -178,6 +187,103 @@ class ImagePostBrandInsightsTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("insights", context)
+
+    def test_hook_pattern_is_required_once_the_brand_has_hook_patterns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self._run(
+                Path(tmp),
+                insights=_insights(hook_patterns=["第二天不垮脸"]),
+                hook_basis="第二天全脸暗沉",
+                run_name="missing-hook-pattern",
+            )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("hook_pattern_used", result.stderr)
+
+    def test_hook_pattern_outside_the_language_bank_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self._run(
+                Path(tmp),
+                insights=_insights(hook_patterns=["第二天不垮脸"]),
+                hook_basis="第二天全脸暗沉",
+                hook_pattern="自己新编的句式",
+                run_name="unknown-hook-pattern",
+            )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("自己新编的句式", result.stderr)
+
+    def test_grounded_hook_pattern_reaches_the_plan_markdown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = self._run(
+                root,
+                insights=_insights(hook_patterns=["第二天不垮脸"]),
+                hook_basis="第二天全脸暗沉",
+                hook_pattern="第二天不垮脸",
+                run_name="grounded-hook-pattern",
+            )
+            plan_markdown = (
+                root / ".brand_ugc" / "grounded-hook-pattern" / "outputs" / "内容方案.md"
+            ).read_text(encoding="utf-8")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("钩子句式：第二天不垮脸", plan_markdown)
+
+    def test_brands_without_hook_patterns_are_not_forced_to_declare_one(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self._run(
+                Path(tmp),
+                insights=_insights(),
+                hook_basis="第二天全脸暗沉",
+                run_name="no-hook-patterns",
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_task_context_ranks_insights_by_confidence_then_recency(self) -> None:
+        def _entry(audience: str, confidence: str, last_seen: str) -> dict:
+            return {
+                "audience": audience,
+                "pain_points": [f"{audience}的痛点"],
+                "provenance": {
+                    "sources": ["interview"],
+                    "observed_count": 1,
+                    "first_seen": "2026-01-01",
+                    "last_seen": last_seen,
+                    "confidence": confidence,
+                },
+            }
+
+        insights = {
+            "schema_version": 1,
+            "brand_id": "north-star",
+            "audience_insights": [
+                _entry("刚冒头的", "low", "2026-03-01"),
+                _entry("老牌可靠的", "high", "2026-01-03"),
+                _entry("同样可靠但更新的", "high", "2026-02-03"),
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = self._run(
+                root,
+                insights=insights,
+                hook_basis="同样可靠但更新的的痛点",
+                run_name="ranked-insights",
+            )
+            context = json.loads(
+                (
+                    root / ".brand_ugc" / "ranked-insights" / "outputs" / "品牌任务上下文.json"
+                ).read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            [item["audience"] for item in context["insights"]["audience_insights"]],
+            ["同样可靠但更新的", "老牌可靠的", "刚冒头的"],
+        )
 
     def test_runs_without_insights_stay_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

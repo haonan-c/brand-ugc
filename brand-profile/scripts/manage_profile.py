@@ -16,8 +16,24 @@ BRAND_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 INSIGHT_SOURCES = ("interview", "local_asset", "platform_radar")
 REF_FIELDS = ("run_id", "note_urls", "note")
-LANGUAGE_BANK_FIELDS = ("voice_samples", "hook_patterns", "avoid_patterns")
+LANGUAGE_BANK_FIELDS = (
+    "voice_samples",
+    "hook_patterns",
+    "title_formulas",
+    "avoid_patterns",
+)
+# 标题公式是受控枚举，与 xhs-topic-radar 策略卡的 titlePattern 保持一致。
+TITLE_FORMULAS = (
+    "number",
+    "question",
+    "pain-point",
+    "result",
+    "urgency",
+    "authority",
+)
 MAX_OBSERVATIONS = 10
+# 任务上下文里洞察的排序档位；置信度相同时再按 last_seen 比新鲜度。
+CONFIDENCE_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 # 每个洞察分区的合并方式：key_fields 决定同一条目，list_fields 取并集，
 # text_fields 由最新一次观察覆盖。
@@ -311,6 +327,13 @@ def _validate_patch(patch: dict[str, Any], known_product_ids: set[str]) -> dict[
             )
         for field in LANGUAGE_BANK_FIELDS:
             values = _string_list(raw_bank.get(field), f"language_bank.{field}")
+            if field == "title_formulas":
+                for value in values:
+                    if value not in TITLE_FORMULAS:
+                        raise ProfileError(
+                            f"language_bank.title_formulas 只允许："
+                            f"{'、'.join(TITLE_FORMULAS)}。"
+                        )
             if values:
                 language_bank[field] = values
 
@@ -415,8 +438,17 @@ def show_insights(args: argparse.Namespace) -> dict[str, Any]:
     return stored
 
 
+def _insight_priority(entry: dict[str, Any]) -> tuple[int, int]:
+    """先看有多可靠，同样可靠的看谁更新；缺 provenance 的排最后。"""
+    provenance = entry.get("provenance") or {}
+    rank = CONFIDENCE_ORDER.get(provenance.get("confidence"), len(CONFIDENCE_ORDER))
+    digits = str(provenance.get("last_seen") or "").replace("-", "")
+    recency = -int(digits) if digits.isdigit() else 0
+    return (rank, recency)
+
+
 def _select_insights(stored: dict[str, Any], product_id: str) -> dict[str, Any]:
-    """保留品牌级条目（product_ids 为空）和命中当前产品的条目。"""
+    """保留品牌级条目（product_ids 为空）和命中当前产品的条目，并按优先级排序。"""
     selected: dict[str, Any] = {}
     for section in SECTION_SPECS:
         entries = [
@@ -425,7 +457,7 @@ def _select_insights(stored: dict[str, Any], product_id: str) -> dict[str, Any]:
             if not entry.get("product_ids") or product_id in entry["product_ids"]
         ]
         if entries:
-            selected[section] = entries
+            selected[section] = sorted(entries, key=_insight_priority)
     language_bank = stored.get("language_bank")
     if language_bank:
         selected["language_bank"] = language_bank
