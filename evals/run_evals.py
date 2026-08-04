@@ -190,7 +190,7 @@ def normalize_judgement(payload: dict[str, Any], expected: list[str]) -> dict[st
     }
 
 
-def run_case(
+def run_once(
     case: dict[str, Any],
     *,
     skill: str,
@@ -277,35 +277,135 @@ def run_case(
     return record
 
 
+def run_case(
+    case: dict[str, Any],
+    *,
+    skill: str,
+    case_dir: Path,
+    repeat: int,
+    agent_template: str,
+    judge_template: str,
+    timeout: int,
+    dry_run: bool,
+) -> dict[str, Any]:
+    """跑 repeat 次同一条 case。
+
+    Agent 会话是随机的——同一条输入，这次读了 Skill 说明书、下次没读，结果
+    可以完全不同。单轮的 pass/fail 读不出「改动是否有效」，所以聚合成通过率。
+    """
+    runs = [
+        run_once(
+            case,
+            skill=skill,
+            case_dir=case_dir if repeat == 1 else case_dir / f"run-{attempt:02d}",
+            agent_template=agent_template,
+            judge_template=judge_template,
+            timeout=timeout,
+            dry_run=dry_run,
+        )
+        for attempt in range(1, repeat + 1)
+    ]
+    if repeat == 1:
+        return runs[0]
+
+    verdicts = [run["verdict"] for run in runs]
+    passed = verdicts.count("pass")
+    if dry_run:
+        verdict = "skipped"
+    elif passed == repeat:
+        verdict = "pass"
+    elif passed:
+        verdict = "flaky"
+    elif all(item == "error" for item in verdicts):
+        verdict = "error"
+    else:
+        verdict = "fail"
+    unmet_counts: dict[str, int] = {}
+    for run in runs:
+        for expectation in run.get("unmet", []):
+            unmet_counts[expectation] = unmet_counts.get(expectation, 0) + 1
+    return {
+        "id": case["id"],
+        "prompt": case["prompt"],
+        "dir": str(case_dir),
+        "verdict": verdict,
+        "repeat": repeat,
+        "passed": passed,
+        "pass_rate": f"{passed}/{repeat}",
+        "unmet_counts": dict(
+            sorted(unmet_counts.items(), key=lambda item: -item[1])
+        ),
+        "runs": [
+            {
+                key: run[key]
+                for key in ("verdict", "met", "total", "unmet", "error", "notes")
+                if key in run
+            }
+            for run in runs
+        ],
+    }
+
+
 def render_markdown(report: dict[str, Any]) -> str:
-    icons = {"pass": "✅", "fail": "❌", "error": "⚠️", "skipped": "⏭️"}
+    icons = {
+        "pass": "✅",
+        "fail": "❌",
+        "flaky": "🌀",
+        "error": "⚠️",
+        "skipped": "⏭️",
+    }
+    repeat = report["repeat"]
     lines = [
         f"# {report['skill']} evals",
         "",
-        f"运行时间：{report['generated_at']}",
+        f"运行时间：{report['generated_at']}　每条跑 {repeat} 次",
         "",
-        "| Case | 结果 | 满足 | 未满足的期望 |",
-        "| --- | --- | --- | --- |",
     ]
-    for case in report["cases"]:
-        verdict = case["verdict"]
-        met = (
-            f"{case['met']}/{case['total']}"
-            if "met" in case
-            else case.get("error", "-")
-        )
-        unmet = "；".join(case.get("unmet", [])) or "-"
-        lines.append(
-            f"| `{case['id']}` | {icons.get(verdict, verdict)} {verdict} | {met} | {unmet} |"
-        )
+    if repeat == 1:
+        lines += [
+            "| Case | 结果 | 满足 | 未满足的期望 |",
+            "| --- | --- | --- | --- |",
+        ]
+        for case in report["cases"]:
+            met = (
+                f"{case['met']}/{case['total']}"
+                if "met" in case
+                else case.get("error", "-")
+            )
+            unmet = "；".join(case.get("unmet", [])) or "-"
+            lines.append(
+                f"| `{case['id']}` | {icons.get(case['verdict'], case['verdict'])} "
+                f"{case['verdict']} | {met} | {unmet} |"
+            )
+    else:
+        lines += [
+            "| Case | 结果 | 通过率 | 最常未满足的期望（次数） |",
+            "| --- | --- | --- | --- |",
+        ]
+        for case in report["cases"]:
+            counts = case.get("unmet_counts", {})
+            worst = (
+                "；".join(f"{text}（{n}）" for text, n in list(counts.items())[:3])
+                or "-"
+            )
+            lines.append(
+                f"| `{case['id']}` | {icons.get(case['verdict'], case['verdict'])} "
+                f"{case['verdict']} | {case.get('pass_rate', '-')} | {worst} |"
+            )
     summary = report["summary"]
     lines += [
         "",
-        f"合计 {summary['total']} 条：通过 {summary['pass']}、"
-        f"未通过 {summary['fail']}、异常 {summary['error']}、"
-        f"跳过 {summary['skipped']}。",
+        f"合计 {summary['total']} 条：稳定通过 {summary['pass']}、"
+        f"不稳定 {summary['flaky']}、未通过 {summary['fail']}、"
+        f"异常 {summary['error']}、跳过 {summary['skipped']}。",
         "",
     ]
+    if repeat > 1:
+        lines += [
+            "`flaky` 表示同一条 case 多次运行结果不一致——通常说明 Skill 的规则写得"
+            "不够硬，模型有时照做有时不照做，比稳定失败更值得先修。",
+            "",
+        ]
     return "\n".join(lines)
 
 
@@ -315,6 +415,8 @@ def run_evals(args: argparse.Namespace) -> dict[str, Any]:
         case_ids=args.case,
         max_cases=args.max_cases,
     )
+    if args.repeat < 1:
+        raise EvalError("--repeat 至少为 1。")
     judge_template = args.judge_command or args.agent_command
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output_dir = (
@@ -330,17 +432,20 @@ def run_evals(args: argparse.Namespace) -> dict[str, Any]:
             case,
             skill=args.skill,
             case_dir=output_dir / case["id"],
+            repeat=args.repeat,
             agent_template=args.agent_command,
             judge_template=judge_template,
             timeout=args.timeout,
             dry_run=args.dry_run,
         )
-        print(f"{record['verdict']:>7}  {record['id']}", file=sys.stderr)
+        rate = f" {record['pass_rate']}" if "pass_rate" in record else ""
+        print(f"{record['verdict']:>7}{rate}  {record['id']}", file=sys.stderr)
         records.append(record)
 
     summary = {
         "total": len(records),
         "pass": sum(1 for item in records if item["verdict"] == "pass"),
+        "flaky": sum(1 for item in records if item["verdict"] == "flaky"),
         "fail": sum(1 for item in records if item["verdict"] == "fail"),
         "error": sum(1 for item in records if item["verdict"] == "error"),
         "skipped": sum(1 for item in records if item["verdict"] == "skipped"),
@@ -348,6 +453,7 @@ def run_evals(args: argparse.Namespace) -> dict[str, Any]:
     report = {
         "skill": args.skill,
         "generated_at": stamp,
+        "repeat": args.repeat,
         "dry_run": args.dry_run,
         "output_dir": str(output_dir),
         "cases": records,
@@ -375,6 +481,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--case", action="append", default=[])
     parser.add_argument("--max-cases", type=int)
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="每条 case 跑几次；大于 1 时按通过率汇总，结果不一致记为 flaky。",
+    )
     parser.add_argument("--output-dir")
     parser.add_argument("--timeout", type=int, default=900)
     parser.add_argument("--dry-run", action="store_true")
@@ -388,7 +500,8 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 2
     print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
-    if report["summary"]["fail"] or report["summary"]["error"]:
+    summary = report["summary"]
+    if summary["fail"] or summary["error"] or summary["flaky"]:
         return 1
     return 0
 

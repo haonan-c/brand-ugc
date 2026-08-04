@@ -117,6 +117,7 @@ class RunEvalsTests(unittest.TestCase):
         self.assertEqual(report["summary"], {
             "total": 1,
             "pass": 1,
+            "flaky": 0,
             "fail": 0,
             "error": 0,
             "skipped": 0,
@@ -404,6 +405,128 @@ class RunEvalsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(report["cases"][0]["fixtures"], [])
         self.assertIn("COUNT=0", transcript)
+
+    def _alternating_judge(self, root: Path, total: int) -> Path:
+        """第 1 次判定全部满足，之后全部不满足。"""
+        path = root / "alternating_judge.py"
+        path.write_text(
+            "import json, sys\n"
+            "from pathlib import Path\n"
+            "counter = Path(__file__).with_suffix('.count')\n"
+            "n = int(counter.read_text()) if counter.exists() else 0\n"
+            "counter.write_text(str(n + 1))\n"
+            f"met = n == 0\n"
+            f"entries = [{{'index': i, 'met': met, 'evidence': 'x'}} for i in range({total})]\n"
+            "print(json.dumps({'expectations': entries, 'notes': ''}))\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_inconsistent_runs_are_reported_as_flaky_not_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            expected = json.loads(
+                (ROOT / "ask-brand" / "evals" / "evals.json").read_text(encoding="utf-8")
+            )["evals"]
+            case = next(item for item in expected if item["id"] == "no-profile-does-not-block")
+            agent = _write_fake_agent(root, "回复内容")
+            judge = self._alternating_judge(root, len(case["expected"]))
+            output_dir = root / "out"
+            result = self._run(
+                [
+                    "--skill",
+                    "ask-brand",
+                    "--agent-command",
+                    f"{sys.executable} {agent} {{prompt_file}}",
+                    "--judge-command",
+                    f"{sys.executable} {judge} {{prompt_file}}",
+                    "--case",
+                    "no-profile-does-not-block",
+                    "--repeat",
+                    "3",
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+            report = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+            markdown = (output_dir / "report.md").read_text(encoding="utf-8")
+            run_dirs = sorted(p.name for p in (output_dir / "no-profile-does-not-block").iterdir())
+
+        self.assertEqual(result.returncode, 1)
+        record = report["cases"][0]
+        self.assertEqual(record["verdict"], "flaky")
+        self.assertEqual(record["pass_rate"], "1/3")
+        self.assertEqual(len(record["runs"]), 3)
+        self.assertEqual(report["summary"]["flaky"], 1)
+        self.assertEqual(report["summary"]["pass"], 0)
+        self.assertEqual(run_dirs, ["run-01", "run-02", "run-03"])
+        self.assertEqual(record["unmet_counts"][case["expected"][0]], 2)
+        self.assertIn("flaky", markdown)
+
+    def test_all_runs_passing_is_a_stable_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            expected = json.loads(
+                (ROOT / "ask-brand" / "evals" / "evals.json").read_text(encoding="utf-8")
+            )["evals"]
+            case = next(item for item in expected if item["id"] == "no-profile-does-not-block")
+            agent = _write_fake_agent(root, "回复内容")
+            judge = _write_fake_judge(root, _judge_all(True, len(case["expected"])))
+            output_dir = root / "out"
+            result = self._run(
+                [
+                    "--skill",
+                    "ask-brand",
+                    "--agent-command",
+                    f"{sys.executable} {agent} {{prompt_file}}",
+                    "--judge-command",
+                    f"{sys.executable} {judge} {{prompt_file}}",
+                    "--case",
+                    "no-profile-does-not-block",
+                    "--repeat",
+                    "2",
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+            report = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+            agent_calls = int(agent.with_suffix(".count").read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report["cases"][0]["verdict"], "pass")
+        self.assertEqual(report["cases"][0]["pass_rate"], "2/2")
+        self.assertEqual(agent_calls, 2)
+
+    def test_repeat_one_keeps_the_flat_single_run_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agent = _write_fake_agent(root, "回复内容")
+            judge = _write_fake_judge(root, _judge_all(True, 3))
+            output_dir = root / "out"
+            result = self._run(
+                [
+                    "--skill",
+                    "ask-brand",
+                    "--agent-command",
+                    f"{sys.executable} {agent} {{prompt_file}}",
+                    "--judge-command",
+                    f"{sys.executable} {judge} {{prompt_file}}",
+                    "--case",
+                    "no-profile-does-not-block",
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+            report = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+            case_dir = output_dir / "no-profile-does-not-block"
+            has_flat_transcript = (case_dir / "transcript.txt").is_file()
+            has_run_subdir = (case_dir / "run-01").exists()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report["repeat"], 1)
+        self.assertNotIn("pass_rate", report["cases"][0])
+        self.assertTrue(has_flat_transcript)
+        self.assertFalse(has_run_subdir)
 
     def test_command_template_without_placeholder_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
