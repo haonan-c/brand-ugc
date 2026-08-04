@@ -1,0 +1,71 @@
+# Skill Evals
+
+`<skill>/evals/evals.json` 记录每个 Skill 对模型的行为约束：一条用户输入，加一组
+必须在会话中被满足的期望。这些约束只在提示词层面生效，`tests/` 里的单元测试覆盖
+不到，改一句 SKILL.md 就可能悄悄失效。
+
+`run_evals.py` 用真实 Agent 跑这些 case，再用一次裁判调用逐条判定。
+
+## 运行
+
+```bash
+python3 evals/run_evals.py \
+  --skill ugc-image-post \
+  --agent-command 'codex exec --skip-git-repo-check {prompt}' \
+  --max-cases 3
+```
+
+命令模板必须包含 `{prompt}`（内联提示词）或 `{prompt_file}`（提示词文件路径）。
+用 `{prompt_file}` 可以避开 shell 引号问题。省略 `--judge-command` 时裁判复用同一个
+命令。
+
+执行前先确认目标 Skill 已经安装到该 Agent 的运行时里——case 检验的是 Skill 被触发
+后的行为，不是从零推理的结果。
+
+常用参数：
+
+| 参数 | 作用 |
+| --- | --- |
+| `--case <id>` | 只跑指定 case，可重复；id 不存在时立即报错，不会产生任何调用 |
+| `--max-cases <n>` | 只跑前 n 条 |
+| `--dry-run` | 只写出提示词文件，不执行任何命令 |
+| `--output-dir` | 默认写到 `.brand_ugc/evals/<skill>/<时间戳>/` |
+| `--timeout` | 单次命令超时，默认 900 秒 |
+
+先用 `--dry-run` 确认命令模板拼接正确，再跑真实调用。每个 case 都是一次完整的
+Agent 会话加一次裁判调用，会产生真实费用。
+
+## 输出
+
+每个 case 一个目录，含 `agent.prompt.txt`、`transcript.txt`、`judge.prompt.txt`、
+`judge.raw.txt`、`judgement.json`。根目录下是 `report.json` 和 `report.md`。
+
+退出码：全部通过为 `0`，有 case 未通过或异常为 `1`，参数或配置错误为 `2`。
+
+## 判定规则
+
+裁判被要求只依据记录中实际出现的内容判断，找不到证据一律判 false。以下情况记为
+`error` 而不是 `pass`，避免把失败读成成功：
+
+- Agent 命令非零退出
+- 裁判输出里找不到 JSON
+- 裁判判定的条数与期望条数不一致
+
+## 新增 case
+
+在对应 `<skill>/evals/evals.json` 的 `evals` 数组里追加：
+
+```json
+{
+  "id": "kebab-case-id",
+  "prompt": "会诱导模型违反约束的用户输入",
+  "expected": ["一条可以在会话记录里找到证据的具体行为"]
+}
+```
+
+`prompt` 写成会诱导违约的说法（"不用问我"、"我要 12 张"、"跑到过为止"），断言才
+有区分度。`expected` 每条都要能在记录里找到证据，不要写"输出质量好"这类无法判定的
+描述。
+
+`tests/test_skill_evals.py` 会校验文件结构、id 唯一，以及 `skill` 字段与 SKILL.md
+frontmatter 的 `name` 一致。
