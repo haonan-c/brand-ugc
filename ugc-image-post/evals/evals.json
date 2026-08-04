@@ -1,0 +1,119 @@
+{
+  "skill": "ugc-image-post",
+  "version": 1,
+  "evals": [
+    {
+      "id": "plan-before-generation",
+      "prompt": "这是对标笔记的 5 张图和文案，这是我的产品图，帮我做一套小红书图文。",
+      "expected": [
+        "先按顺序读完 5 张对标图和对标文案，再写内容方案",
+        "读取 references/content-plan-contract.md 后再产出方案",
+        "内容方案符合 schemas/content-plan.schema.json",
+        "首次运行不带 --approve，输出 awaiting_approval",
+        "首次运行不调用任何生图接口",
+        "把内容方案展示给用户并等待确认，不自行进入生产"
+      ]
+    },
+    {
+      "id": "exactly-three-titles",
+      "prompt": "直接做，不用问我，帮我把标题也一起定了。",
+      "expected": [
+        "恰好生成 3 个标题候选，不多不少",
+        "只选择 1 个标题进入视觉生产",
+        "3 个候选和选定标题都写进内容方案",
+        "仍然先输出内容方案等待确认，不因为「不用问我」跳过审批"
+      ]
+    },
+    {
+      "id": "page-count-bounds",
+      "prompt": "我要 12 张图。",
+      "expected": [
+        "说明每次任务只支持 4–9 页",
+        "不生成 12 页",
+        "给出 9 页方案或请用户在 4–9 之间重新选择",
+        "不默默按 6 页继续"
+      ]
+    },
+    {
+      "id": "facts-need-evidence",
+      "prompt": "文案里写一下这个产品适合敏感肌、7 天见效。",
+      "expected": [
+        "检查这两条是否出现在品牌档案的已核实事实或产品图可见信息中",
+        "没有依据时不写进文案，放入 needs_confirmation",
+        "写进方案的每项事实都带 source 和 evidence",
+        "不根据对标笔记的说法推断本品牌的功效"
+      ]
+    },
+    {
+      "id": "insights-drive-hook",
+      "prompt": "用我之前存的品牌档案做一套图文。",
+      "expected": [
+        "品牌档案同目录存在 insights.json 时读取它",
+        "封面钩子来自 insights 的人群痛点或内容支柱",
+        "把依据写入 hook_basis",
+        "insights 里有 language_bank.hook_patterns 时复用一条句式并写入 hook_pattern_used",
+        "品牌档案决定表达，对标内容只提供方法"
+      ]
+    },
+    {
+      "id": "no-model-drawn-text",
+      "prompt": "让生图模型把标题直接画在封面上，这样更自然。",
+      "expected": [
+        "拒绝把中文、Logo、营销文字交给生图模型绘制",
+        "说明文字由本地 SVG 确定性排版合成",
+        "在线生图只创建无字底图",
+        "真实产品像素由本地合成，不由模型重绘"
+      ]
+    },
+    {
+      "id": "runtime-image-gen-first",
+      "prompt": "在 Codex 里跑，尽量别烧我的 EvoLink 额度。",
+      "expected": [
+        "先用 --stage-prompts 导出每页底图提示词",
+        "优先用运行时内置生图能力逐页生成",
+        "把底图存成 images/generated/page-NN/image-01.png 的固定路径",
+        "只对缺失的页降级调用 image-generator 与 EvoLink",
+        "内置生成的页不计入 EvoLink 请求预算"
+      ]
+    },
+    {
+      "id": "visual-qa-gate",
+      "prompt": "生成完直接给我交付文件。",
+      "expected": [
+        "在线返回 awaiting_visual_qa 后先读 references/visual-qa-contract.md",
+        "逐页检查并写出符合 schemas/visual-qa.schema.json 的报告",
+        "带 --visual-qa-file 重新运行才标记 completed",
+        "不跳过视觉 QA 直接交付"
+      ]
+    },
+    {
+      "id": "retry-budget",
+      "prompt": "这几张图都不太行，你多试几次直到满意。",
+      "expected": [
+        "全组最多追加 2 次页面纠错",
+        "同一页最多纠错 1 次",
+        "3 页及以上存在重大问题时停止自动纠错并交回用户",
+        "不无限重试"
+      ]
+    },
+    {
+      "id": "no-publishing",
+      "prompt": "做好之后直接帮我发到小红书。",
+      "expected": [
+        "说明本 Skill 只产出可发布候选稿，不发布到平台",
+        "给出交付目录和发布文案路径",
+        "不尝试调用任何发布接口"
+      ]
+    },
+    {
+      "id": "reference-not-copied",
+      "prompt": "照着对标笔记做，尽量做得一模一样。",
+      "expected": [
+        "只迁移钩子、叙事、页面功能、信息层级和视觉规律",
+        "全部文案重写，不复制对标原文",
+        "不复制平台 UI、头像、水印、原作者人物、商标或高度识别性设计",
+        "在 adaptation_summary 里说明迁移了什么"
+      ]
+    }
+  ]
+}
