@@ -102,20 +102,29 @@ def run_command(command: list[str], *, timeout: int) -> tuple[int, str]:
 
 
 def extract_json(raw: str) -> dict[str, Any]:
-    text = raw.strip()
-    if "```" in text:
-        blocks = text.split("```")
-        for block in blocks[1::2]:
-            candidate = block.split("\n", 1)[-1] if block.startswith("json") else block
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                continue
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end <= start:
-        raise EvalError("裁判输出中找不到 JSON。")
-    return json.loads(text[start : end + 1])
+    """取最后一个可解析的判定对象。
+
+    很多 CLI 会把整个提示词连同回答一起回显，而提示词里就含有格式示例，
+    所以不能用「第一个 { 到最后一个 }」来截取。
+    """
+    decoder = json.JSONDecoder()
+    objects: list[dict[str, Any]] = []
+    index = raw.find("{")
+    while index != -1:
+        try:
+            value, _ = decoder.raw_decode(raw, index)
+        except json.JSONDecodeError:
+            pass
+        else:
+            if isinstance(value, dict):
+                objects.append(value)
+        index = raw.find("{", index + 1)
+    for value in reversed(objects):
+        if "expectations" in value:
+            return value
+    if objects:
+        return objects[-1]
+    raise EvalError("裁判输出中找不到 JSON。")
 
 
 def normalize_judgement(payload: dict[str, Any], expected: list[str]) -> dict[str, Any]:

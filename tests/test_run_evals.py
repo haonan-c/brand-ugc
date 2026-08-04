@@ -191,6 +191,46 @@ class RunEvalsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(report["cases"][0]["verdict"], "pass")
 
+    def test_judge_that_echoes_the_prompt_before_answering_is_parsed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            expected = json.loads(
+                (ROOT / "ask-brand" / "evals" / "evals.json").read_text(encoding="utf-8")
+            )["evals"]
+            case = next(item for item in expected if item["id"] == "no-profile-does-not-block")
+            agent = _write_fake_agent(root, "没有品牌档案也可以继续。")
+            judge = root / "echoing_judge.py"
+            judge.write_text(
+                "import sys\n"
+                "from pathlib import Path\n"
+                "print(Path(sys.argv[1]).read_text(encoding='utf-8'))\n"
+                f"print({_judge_all(True, len(case['expected']))!r})\n",
+                encoding="utf-8",
+            )
+            output_dir = root / "out"
+            result = self._run(
+                [
+                    "--skill",
+                    "ask-brand",
+                    "--agent-command",
+                    f"{sys.executable} {agent} {{prompt_file}}",
+                    "--judge-command",
+                    f"{sys.executable} {judge} {{prompt_file}}",
+                    "--case",
+                    "no-profile-does-not-block",
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+            report = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+            raw = (
+                output_dir / "no-profile-does-not-block" / "judge.raw.txt"
+            ).read_text(encoding="utf-8")
+
+        self.assertIn("从 0 开始的序号", raw)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report["cases"][0]["verdict"], "pass")
+
     def test_unparsable_judge_output_is_an_error_not_a_pass(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
