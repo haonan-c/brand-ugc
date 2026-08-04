@@ -19,6 +19,32 @@ python3 evals/run_evals.py \
 用 `{prompt_file}` 可以避开 shell 引号问题。省略 `--judge-command` 时裁判复用同一个
 命令。
 
+`{work_dir}` 会展开成该 case 专属的空工作目录。把它接到 Agent 的工作目录参数上
+（codex 是 `-C`），可以避免本仓库的 `AGENTS.md` 和 `CONTEXT.md` 混进上下文：
+
+```bash
+codex exec --skip-git-repo-check -C {work_dir} -s read-only --color never {prompt}
+```
+
+`--color never` 不是可选项——ANSI 转义码会污染交给裁判的会话记录。
+
+## Fixtures
+
+涉及本地素材的 case 必须自带素材，否则 Agent 只会回答"没找到文件"，判定没有意义。
+在 case 上加 `fixtures` 字段，值是相对 `<skill>/evals/` 的目录：
+
+```json
+{
+  "id": "route-decision-ready",
+  "prompt": "工作目录里有对标图、对标文案和产品图，你看着办。",
+  "fixtures": "assets/benchmark-and-product",
+  "expected": ["..."]
+}
+```
+
+runner 每次执行前会清空并重建工作目录，再把该目录下的文件铺进去。`prompt` 里要
+明确说素材在工作目录，Agent 才会去找。
+
 执行前先确认目标 Skill 已经安装到该 Agent 的运行时里——case 检验的是 Skill 被触发
 后的行为，不是从零推理的结果。
 

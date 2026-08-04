@@ -36,6 +36,22 @@ class SkillEvalsTests(unittest.TestCase):
                         self.assertIsInstance(expectation, str)
                         self.assertTrue(expectation.strip())
 
+    def test_declared_fixtures_exist_and_are_not_empty(self) -> None:
+        for path in sorted(ROOT.glob("*/evals/evals.json")):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            for case in payload["evals"]:
+                fixtures = case.get("fixtures")
+                if not fixtures:
+                    continue
+                with self.subTest(skill=payload["skill"], case=case["id"]):
+                    source = (path.parent / fixtures).resolve()
+                    self.assertTrue(source.is_dir(), f"缺少 fixtures 目录：{source}")
+                    self.assertTrue(any(source.iterdir()))
+                    self.assertTrue(
+                        source.is_relative_to(path.parent),
+                        "fixtures 必须位于该 Skill 的 evals 目录内",
+                    )
+
     def test_evals_skill_names_match_skill_frontmatter(self) -> None:
         for path in sorted(ROOT.glob("*/evals/evals.json")):
             skill_md = path.parents[1] / "SKILL.md"

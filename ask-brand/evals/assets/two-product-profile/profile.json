@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "brand": {
+    "name": "晨野",
+    "tone": "克制、可验证、不夸张"
+  },
+  "products": [
+    {
+      "id": "morning-serum",
+      "name": "晨野轻透精华",
+      "verified_claims": [
+        "规格为 30 毫升",
+        "质地为水感"
+      ]
+    },
+    {
+      "id": "night-cream",
+      "name": "晨野修护晚霜",
+      "verified_claims": [
+        "规格为 50 克",
+        "包装为玻璃罐"
+      ]
+    }
+  ],
+  "banned_expressions": [
+    "七天见效",
+    "医学级"
+  ],
+  "visual": {
+    "colors": [
+      "#17324D",
+      "#F7F3EC"
+    ]
+  }
+}

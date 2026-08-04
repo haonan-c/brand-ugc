@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import shlex
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -67,7 +68,13 @@ def load_cases(
     return evals_path, cases
 
 
-def build_command(template: str, *, prompt: str, prompt_file: Path) -> list[str]:
+def build_command(
+    template: str,
+    *,
+    prompt: str,
+    prompt_file: Path,
+    work_dir: Path,
+) -> list[str]:
     tokens = shlex.split(template)
     if not tokens:
         raise EvalError("命令模板为空。")
@@ -77,9 +84,35 @@ def build_command(template: str, *, prompt: str, prompt_file: Path) -> list[str]
             f"当前模板：{template}"
         )
     return [
-        token.replace("{prompt_file}", str(prompt_file)).replace("{prompt}", prompt)
+        token.replace("{work_dir}", str(work_dir))
+        .replace("{prompt_file}", str(prompt_file))
+        .replace("{prompt}", prompt)
         for token in tokens
     ]
+
+
+def prepare_work_dir(skill: str, case: dict[str, Any], work_dir: Path) -> list[str]:
+    """按 case 的 fixtures 字段把素材铺进工作目录。"""
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+    work_dir.mkdir(parents=True)
+    fixtures = case.get("fixtures")
+    if not fixtures:
+        return []
+    source = (ROOT / skill / "evals" / fixtures).resolve()
+    if not source.is_dir():
+        raise EvalError(f"case {case['id']} 的 fixtures 目录不存在：{source}")
+    copied = []
+    for item in sorted(source.iterdir()):
+        target = work_dir / item.name
+        if item.is_dir():
+            shutil.copytree(item, target)
+        else:
+            shutil.copy2(item, target)
+        copied.append(item.name)
+    if not copied:
+        raise EvalError(f"case {case['id']} 的 fixtures 目录是空的：{source}")
+    return copied
 
 
 def run_command(command: list[str], *, timeout: int) -> tuple[int, str]:
@@ -160,6 +193,7 @@ def normalize_judgement(payload: dict[str, Any], expected: list[str]) -> dict[st
 def run_case(
     case: dict[str, Any],
     *,
+    skill: str,
     case_dir: Path,
     agent_template: str,
     judge_template: str,
@@ -171,15 +205,20 @@ def run_case(
     expected = case["expected"]
     prompt_file = case_dir / "agent.prompt.txt"
     prompt_file.write_text(prompt + "\n", encoding="utf-8")
+    work_dir = case_dir / "workspace"
+    fixtures = prepare_work_dir(skill, case, work_dir)
     agent_command = build_command(
         agent_template,
         prompt=prompt,
         prompt_file=prompt_file,
+        work_dir=work_dir,
     )
     record: dict[str, Any] = {
         "id": case["id"],
         "prompt": prompt,
         "agent_command": shlex.join(agent_command),
+        "work_dir": str(work_dir),
+        "fixtures": fixtures,
         "dir": str(case_dir),
     }
     if dry_run:
@@ -209,6 +248,7 @@ def run_case(
         judge_template,
         prompt=judge_prompt,
         prompt_file=judge_prompt_file,
+        work_dir=work_dir,
     )
     record["judge_command"] = shlex.join(judge_command)
     judge_returncode, judge_output = run_command(judge_command, timeout=timeout)
@@ -288,6 +328,7 @@ def run_evals(args: argparse.Namespace) -> dict[str, Any]:
     for case in cases:
         record = run_case(
             case,
+            skill=args.skill,
             case_dir=output_dir / case["id"],
             agent_template=args.agent_command,
             judge_template=judge_template,

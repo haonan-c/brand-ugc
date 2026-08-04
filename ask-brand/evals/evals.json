@@ -6,7 +6,7 @@
       "id": "explicit-topic-research",
       "prompt": "帮我找一些母婴行业的选题。",
       "expected": [
-        "直接路由到 xhs-topic-radar",
+        "由 xhs-topic-radar 承接，不绕道其他选题工具",
         "把「母婴行业」理解为行业词，不理解为软件或产品命名需求",
         "不再追问要图文还是视频",
         "不同时启动 ugc-image-post 或 ugc-storyboard"
@@ -16,7 +16,7 @@
       "id": "explicit-format-goes-direct",
       "prompt": "我要做一条小红书图文。",
       "expected": [
-        "直接路由到 ugc-image-post",
+        "由 ugc-image-post 承接，不绕道其他图文或选题工具",
         "不做选题研究",
         "只询问 ugc-image-post 缺少的必填素材",
         "不重复下游 Skill 的生产逻辑"
@@ -43,19 +43,22 @@
     },
     {
       "id": "route-decision-ready",
-      "prompt": "这是对标图、对标文案和产品图，你看着办。",
+      "prompt": "工作目录里有对标图、对标文案和产品图，你看着办。",
+      "fixtures": "assets/benchmark-and-product",
       "expected": [
         "运行 scripts/route_request.py 做可重复的素材检查",
         "按 schemas/route-decision.schema.json 读取结果",
-        "ready 时直接执行 recommended_skill，不重复确认路径"
+        "ready 时直接执行 recommended_skill，不重复确认路径",
+        "识别出工作目录里已有的对标图、对标文案和产品图，不要求用户重新提供"
       ]
     },
     {
       "id": "route-decision-needs-input",
-      "prompt": "帮我做个图文，素材我一会儿给。",
+      "prompt": "帮我做个图文，工作目录里有产品图，对标素材我一会儿给。",
+      "fixtures": "assets/product-only",
       "expected": [
-        "只询问 missing_inputs 中缺少的必填素材",
-        "不追问已经具备的素材",
+        "只询问 missing_inputs 中缺少的对标图和对标文案",
+        "不追问工作目录里已有的产品图",
         "不在素材齐备前进入生产"
       ]
     },
@@ -92,10 +95,13 @@
     },
     {
       "id": "multi-brand-disambiguation",
-      "prompt": "用我的品牌档案做一套图文。",
+      "prompt": "用工作目录里的 profile.json 做一套图文。",
+      "fixtures": "assets/two-product-profile",
       "expected": [
-        "档案里存在多个品牌或产品且用户未指定时才询问",
-        "只询问所需的品牌或产品，不追加其他问题"
+        "读出 profile.json 里有两个产品",
+        "询问用哪个产品",
+        "只询问所需的产品，不追加其他问题",
+        "不自行替用户选一个产品继续"
       ]
     },
     {

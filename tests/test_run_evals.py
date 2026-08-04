@@ -329,6 +329,82 @@ class RunEvalsTests(unittest.TestCase):
         self.assertIn("no-such-case", result.stderr)
         self.assertFalse(agent_ran)
 
+    def test_fixtures_are_copied_into_a_per_case_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lister = root / "listing_agent.py"
+            lister.write_text(
+                "import sys\n"
+                "from pathlib import Path\n"
+                "work = Path(sys.argv[1])\n"
+                "print('WORKDIR CONTENTS: ' + ','.join(sorted(p.name for p in work.iterdir())))\n",
+                encoding="utf-8",
+            )
+            judge = _write_fake_judge(root, _judge_all(True, 4))
+            output_dir = root / "out"
+            result = self._run(
+                [
+                    "--skill",
+                    "ask-brand",
+                    "--agent-command",
+                    f"{sys.executable} {lister} {{work_dir}} {{prompt_file}}",
+                    "--judge-command",
+                    f"{sys.executable} {judge} {{prompt_file}}",
+                    "--case",
+                    "route-decision-ready",
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+            report = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+            transcript = (
+                output_dir / "route-decision-ready" / "transcript.txt"
+            ).read_text(encoding="utf-8")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            report["cases"][0]["fixtures"],
+            ["product.png", "reference-01.png", "reference-02.png", "reference-copy.txt"],
+        )
+        self.assertIn("reference-copy.txt", transcript)
+        self.assertIn("product.png", transcript)
+
+    def test_case_without_fixtures_gets_an_empty_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lister = root / "listing_agent.py"
+            lister.write_text(
+                "import sys\n"
+                "from pathlib import Path\n"
+                "work = Path(sys.argv[1])\n"
+                "print('COUNT=' + str(len(list(work.iterdir()))))\n",
+                encoding="utf-8",
+            )
+            judge = _write_fake_judge(root, _judge_all(True, 3))
+            output_dir = root / "out"
+            result = self._run(
+                [
+                    "--skill",
+                    "ask-brand",
+                    "--agent-command",
+                    f"{sys.executable} {lister} {{work_dir}} {{prompt_file}}",
+                    "--judge-command",
+                    f"{sys.executable} {judge} {{prompt_file}}",
+                    "--case",
+                    "ambiguous-asks-one-question",
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+            report = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+            transcript = (
+                output_dir / "ambiguous-asks-one-question" / "transcript.txt"
+            ).read_text(encoding="utf-8")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report["cases"][0]["fixtures"], [])
+        self.assertIn("COUNT=0", transcript)
+
     def test_command_template_without_placeholder_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = self._run(
