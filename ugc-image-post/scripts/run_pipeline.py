@@ -593,6 +593,75 @@ def _offline_background(
     return output
 
 
+def _page_prompt(page: dict[str, Any]) -> str:
+    prompt = page["visual_prompt"].strip()
+    if page["product_mode"] == "ai_interaction":
+        prompt += (
+            "\n使用参考产品完成真实交互场景，保持包装、颜色、Logo与标签一致。"
+            "画面中不要生成字幕、营销文字、平台UI或水印。"
+        )
+    else:
+        prompt += (
+            "\n只生成无字场景底图，保留充足排版留白。"
+            "不要生成产品、Logo、字幕、营销文字、平台UI或水印。"
+        )
+    return prompt
+
+
+def _background_output(run_dir: Path, index: int) -> Path:
+    return run_dir / "images" / "generated" / f"page-{index:02d}" / "image-01.png"
+
+
+def _stage_prompts(
+    *,
+    run_dir: Path,
+    plan: dict[str, Any],
+    product: Path,
+    resolution: str,
+) -> dict[str, Any]:
+    width, height = _canvas_size(resolution)
+    pages = []
+    for page in plan["pages"]:
+        index = page["index"]
+        prompt_file = run_dir / "prompts" / f"page-{index:02d}.prompt.txt"
+        write_text(prompt_file, _page_prompt(page) + "\n")
+        output = _background_output(run_dir, index)
+        pages.append(
+            {
+                "index": index,
+                "prompt_file": str(prompt_file),
+                "output": str(output),
+                "ready": output.exists(),
+                "product_mode": page["product_mode"],
+                "reference_image": (
+                    str(product) if page["product_mode"] == "ai_interaction" else ""
+                ),
+            }
+        )
+    manifest = {
+        "aspect_ratio": "3:4",
+        "resolution": resolution.upper(),
+        "canvas": f"{width}x{height}",
+        "pages": pages,
+    }
+    manifest_path = run_dir / "state" / "background_manifest.json"
+    write_json(manifest_path, manifest)
+    summary = {
+        "status": "awaiting_backgrounds",
+        "run_dir": str(run_dir),
+        "manifest": str(manifest_path),
+        "page_count": len(pages),
+        "pending_pages": [page["index"] for page in pages if not page["ready"]],
+        "next_step": (
+            "优先用运行时内置生图能力按 manifest 逐页生成无字底图，"
+            "保存到每页的 output 路径；缺失的页会在下一次 --approve --resume "
+            "时降级调用 image-generator。"
+        ),
+    }
+    write_json(run_dir / "state" / "run_state.json", summary)
+    return summary
+
+
 def _online_backgrounds(
     *,
     args: argparse.Namespace,
@@ -601,11 +670,6 @@ def _online_backgrounds(
     product: Path,
 ) -> dict[int, Path]:
     generator = Path(args.image_generator_script).expanduser().resolve()
-    if not generator.is_file():
-        raise PipelineError(
-            "缺少 image-generator 脚本。请同时安装 image-generator Skill，"
-            f"或使用 --image-generator-script 指定路径：{generator}"
-        )
     budget_path = run_dir / "state" / "request_budget.json"
     budget = (
         read_json(budget_path)
@@ -620,29 +684,30 @@ def _online_backgrounds(
     outputs: dict[int, Path] = {}
     for page in plan["pages"]:
         index = page["index"]
-        output_dir = run_dir / "images" / "generated" / f"page-{index:02d}"
-        output = output_dir / "image-01.png"
+        output = _background_output(run_dir, index)
+        output_dir = output.parent
         if output.exists():
             outputs[index] = output
+            if str(index) not in budget["pages"]:
+                _image_dimensions(output)
+                budget["pages"][str(index)] = {
+                    "attempts": 1,
+                    "outputs": [str(output)],
+                    "source": "runtime_image_gen",
+                }
             continue
+        if not generator.is_file():
+            raise PipelineError(
+                "缺少 image-generator 脚本。请同时安装 image-generator Skill，"
+                f"或使用 --image-generator-script 指定路径：{generator}"
+            )
         if int(budget["used"]) >= int(budget["maximum_image_requests"]):
             raise PipelineError("本次任务已达到图片生成请求上限。")
-        prompt = page["visual_prompt"].strip()
-        if page["product_mode"] == "ai_interaction":
-            prompt += (
-                "\n使用参考产品完成真实交互场景，保持包装、颜色、Logo与标签一致。"
-                "画面中不要生成字幕、营销文字、平台UI或水印。"
-            )
-        else:
-            prompt += (
-                "\n只生成无字场景底图，保留充足排版留白。"
-                "不要生成产品、Logo、字幕、营销文字、平台UI或水印。"
-            )
         prompt_file = run_dir / "prompts" / f"page-{index:02d}.prompt.txt"
-        write_text(prompt_file, prompt + "\n")
+        write_text(prompt_file, _page_prompt(page) + "\n")
         page_state = budget["pages"].setdefault(
             str(index),
-            {"attempts": 0, "outputs": []},
+            {"attempts": 0, "outputs": [], "source": "image_generator"},
         )
         page_state["attempts"] = int(page_state["attempts"]) + 1
         page_state["outputs"].append(str(output))
@@ -705,6 +770,11 @@ def _invoke_generation(
     product: Path,
 ) -> Path:
     generator = Path(args.image_generator_script).expanduser().resolve()
+    if not generator.is_file():
+        raise PipelineError(
+            "缺少 image-generator 脚本。请同时安装 image-generator Skill，"
+            f"或使用 --image-generator-script 指定路径：{generator}"
+        )
     write_text(prompt_file, prompt.strip() + "\n")
     command = [
         sys.executable,
@@ -1128,6 +1198,16 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         }
         write_json(run_dir / "state" / "run_state.json", summary)
         return summary
+    if args.stage_prompts:
+        if args.offline:
+            raise PipelineError("--stage-prompts 与 --offline 不能同时使用。")
+        manifest = read_json(run_dir / "inputs" / "manifest.json")
+        return _stage_prompts(
+            run_dir=run_dir,
+            plan=plan,
+            product=Path(manifest["product_image"]),
+            resolution=args.resolution,
+        )
     return _produce(args=args, run_dir=run_dir, plan=plan)
 
 
@@ -1145,6 +1225,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--approve", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--stage-prompts", action="store_true")
     parser.add_argument("--visual-qa-file")
     parser.add_argument(
         "--image-generator-script",

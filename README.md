@@ -204,6 +204,7 @@ An online image-post run moves through these states:
 | State | Meaning | Next action |
 | --- | --- | --- |
 | `awaiting_approval` | The plan is saved and no generation API was called | Approve, then continue with `--approve --resume` |
+| `awaiting_backgrounds` | Per-page background prompts are staged and no generation API was called | Generate backgrounds with the runtime's built-in image tool, then continue with `--approve --resume` |
 | `awaiting_visual_qa` | Online generation and local composition are complete | Inspect every page and submit visual QA |
 | `completed` | Visual QA passed and deliverables were collected | Use the files in `deliverables/` |
 
