@@ -366,6 +366,198 @@ class ImagePostPipelineTests(unittest.TestCase):
         self.assertEqual(budget["used"], 6)
         self.assertEqual(sorted(budget["pages"]), ["1", "2", "3", "4", "5", "6"])
 
+    def test_stage_prompts_writes_manifest_without_calling_generator(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reference, product, copy_file, plan_file = _write_inputs(root)
+            output_root = root / ".brand_ugc"
+            fake_generator = _write_fake_generator(root)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(PIPELINE),
+                    "--run-name",
+                    "staged-post",
+                    "--reference-image",
+                    str(reference),
+                    "--reference-copy-file",
+                    str(copy_file),
+                    "--product-image",
+                    str(product),
+                    "--plan-file",
+                    str(plan_file),
+                    "--output-root",
+                    str(output_root),
+                    "--image-generator-script",
+                    str(fake_generator),
+                    "--approve",
+                    "--resume",
+                    "--stage-prompts",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            run_dir = output_root / "staged-post"
+            manifest = json.loads(
+                (run_dir / "state" / "background_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            first_prompt = (
+                run_dir / "prompts" / "page-01.prompt.txt"
+            ).read_text(encoding="utf-8")
+            generator_called = fake_generator.with_suffix(".count").exists()
+            deliverables_exist = (run_dir / "deliverables").exists()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["status"], "awaiting_backgrounds")
+        self.assertEqual(summary["pending_pages"], [1, 2, 3, 4, 5, 6])
+        self.assertFalse(generator_called)
+        self.assertFalse(deliverables_exist)
+        self.assertEqual(manifest["aspect_ratio"], "3:4")
+        self.assertEqual(manifest["canvas"], "1536x2048")
+        self.assertEqual(len(manifest["pages"]), 6)
+        self.assertFalse(any(page["ready"] for page in manifest["pages"]))
+        self.assertEqual(
+            Path(manifest["pages"][0]["output"]),
+            (run_dir / "images" / "generated" / "page-01" / "image-01.png").resolve(),
+        )
+        self.assertIn("只生成无字场景底图", first_prompt)
+
+    @unittest.skipUnless(shutil.which("magick"), "需要 ImageMagick")
+    def test_runtime_backgrounds_skip_api_and_missing_pages_fall_back(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reference, product, copy_file, plan_file = _write_inputs(root)
+            output_root = root / ".brand_ugc"
+            fake_generator = _write_fake_generator(root)
+            base_command = [
+                sys.executable,
+                str(PIPELINE),
+                "--run-name",
+                "runtime-post",
+                "--reference-image",
+                str(reference),
+                "--reference-copy-file",
+                str(copy_file),
+                "--product-image",
+                str(product),
+                "--plan-file",
+                str(plan_file),
+                "--output-root",
+                str(output_root),
+                "--image-generator-script",
+                str(fake_generator),
+                "--approve",
+                "--resume",
+            ]
+            staged = subprocess.run(
+                [*base_command, "--stage-prompts"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            manifest = json.loads(staged.stdout)
+            manifest_pages = json.loads(
+                (
+                    output_root
+                    / "runtime-post"
+                    / "state"
+                    / "background_manifest.json"
+                ).read_text(encoding="utf-8")
+            )["pages"]
+            for page in manifest_pages[:4]:
+                output = Path(page["output"])
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(PNG_1X1)
+            produced = subprocess.run(
+                base_command,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            budget = json.loads(
+                (
+                    output_root
+                    / "runtime-post"
+                    / "state"
+                    / "request_budget.json"
+                ).read_text(encoding="utf-8")
+            )
+            count = int(fake_generator.with_suffix(".count").read_text(encoding="utf-8"))
+
+        self.assertEqual(staged.returncode, 0, staged.stderr)
+        self.assertEqual(manifest["status"], "awaiting_backgrounds")
+        self.assertEqual(produced.returncode, 0, produced.stderr)
+        self.assertEqual(count, 2)
+        self.assertEqual(budget["used"], 2)
+        self.assertEqual(sorted(budget["pages"]), ["1", "2", "3", "4", "5", "6"])
+        for index in ("1", "2", "3", "4"):
+            self.assertEqual(budget["pages"][index]["source"], "runtime_image_gen")
+            self.assertEqual(budget["pages"][index]["attempts"], 1)
+        for index in ("5", "6"):
+            self.assertEqual(budget["pages"][index]["source"], "image_generator")
+
+    @unittest.skipUnless(shutil.which("magick"), "需要 ImageMagick")
+    def test_all_runtime_backgrounds_need_no_image_generator_script(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reference, product, copy_file, plan_file = _write_inputs(root)
+            output_root = root / ".brand_ugc"
+            base_command = [
+                sys.executable,
+                str(PIPELINE),
+                "--run-name",
+                "runtime-only",
+                "--reference-image",
+                str(reference),
+                "--reference-copy-file",
+                str(copy_file),
+                "--product-image",
+                str(product),
+                "--plan-file",
+                str(plan_file),
+                "--output-root",
+                str(output_root),
+                "--image-generator-script",
+                str(root / "missing_generator.py"),
+                "--approve",
+                "--resume",
+            ]
+            subprocess.run(
+                [*base_command, "--stage-prompts"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            run_dir = output_root / "runtime-only"
+            for index in range(1, 7):
+                output = (
+                    run_dir / "images" / "generated" / f"page-{index:02d}" / "image-01.png"
+                )
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(PNG_1X1)
+            produced = subprocess.run(
+                base_command,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            budget = json.loads(
+                (run_dir / "state" / "request_budget.json").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(produced.returncode, 0, produced.stderr)
+        self.assertEqual(json.loads(produced.stdout)["status"], "awaiting_visual_qa")
+        self.assertEqual(budget["used"], 0)
+        self.assertEqual(
+            {entry["source"] for entry in budget["pages"].values()},
+            {"runtime_image_gen"},
+        )
+
     @unittest.skipUnless(shutil.which("magick"), "需要 ImageMagick")
     def test_visual_qa_retries_at_most_two_pages_then_accepts_a_pass_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

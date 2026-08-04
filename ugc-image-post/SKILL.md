@@ -62,13 +62,43 @@ python3 scripts/run_pipeline.py \
 没有品牌档案时省略对应参数。首次运行输出 `awaiting_approval`，只保存输入和
 `outputs/内容方案.md`，不调用生图 API。向用户展示方案并等待确认。
 
-## 3. 生成并排版
+## 3. 生成底图
 
-确认后使用完全相同的参数，再添加：
+底图的生成顺序是：**运行时内置生图能力优先，缺失的页才降级到 EvoLink API。**
+
+### 3.1 导出每页提示词
+
+确认方案后，先用相同参数加上：
+
+```text
+--approve --resume --stage-prompts
+```
+
+输出 `awaiting_backgrounds`，并写出 `state/background_manifest.json`。它列出每页的
+`prompt_file`、`output`、`product_mode` 和 `reference_image`。这一步不调用任何生图接口。
+
+### 3.2 优先用运行时内置生图
+
+当前运行时提供内置生图工具（例如 Codex 的 `image_gen`）时，按 manifest 逐页生成：
+
+- 使用 `prompt_file` 中的完整提示词，不要自行改写。
+- 比例 3:4，尺寸不低于 manifest 的 `canvas`。
+- `product_mode` 为 `ai_interaction` 的页把 `reference_image` 作为参考图传入。
+- 把结果保存为该页 `output` 指定的绝对路径，文件名必须是 `image-01.png`。
+
+运行时没有内置生图能力，或某几页生成失败时，直接跳过这些页即可。
+
+### 3.3 生成并排版
+
+使用第 2 步的参数，再添加：
 
 ```text
 --approve --resume
 ```
+
+管线自动识别已存在的底图并跳过；只有缺失的页会调用 `image-generator` 与 EvoLink。
+内置生成的页在 `state/request_budget.json` 中记为 `source: runtime_image_gen`，不占用
+EvoLink 请求预算。跳过 3.1 和 3.2 直接执行本步时，全部页面走 API，与旧行为一致。
 
 - 在线生图只创建无字底图；真实产品像素由本地 SVG 排版合成。
 - `ai_interaction` 页面把产品图作为生图参考，并要求严格视觉 QA。

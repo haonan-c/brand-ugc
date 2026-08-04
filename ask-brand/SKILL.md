@@ -1,6 +1,6 @@
 ---
 name: ask-brand
-description: Diagnose a brand marketing request, inspect available local assets, and route it to exactly one xhs-topic-radar, brand-profile, ugc-image-post, or ugc-storyboard workflow. Use when users ask broadly for 小红书选题研究、品牌营销、新品内容、图文还是短视频的选择、营销素材检查、创建品牌档案，或希望从统一入口开始品牌内容生产。
+description: Entry-point router for brand content production. Diagnose the request, check local assets, then hand off to exactly one xhs-topic-radar, brand-profile, ugc-image-post, or ugc-storyboard run. Use when the target format is still undecided or the request is vague — 帮我做点品牌内容、你看着办、不知道该做图文还是短视频、先看看我素材够不够、不知道从哪开始、同时要选题研究又要成品。When the user already names one workflow, go straight to that Skill instead of this one.
 ---
 
 # Ask Brand
@@ -40,7 +40,8 @@ python3 scripts/route_request.py \
 
 - `ready`：直接执行 `recommended_skill`，不要重复确认路径。
 - `needs_input`：只询问 `missing_inputs` 中缺少的必填素材。
-- `needs_confirmation`：向用户提出 `question`，等待回答后再路由。
+- `needs_confirmation`：把 `question` 原样提给用户，等待回答后再路由。不要换成自己的
+  问题，不要在同一轮追加别的问题，也不要替用户默认一个答案继续往下走。
 
 ## 前置配置编排
 

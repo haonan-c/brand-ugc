@@ -1,0 +1,107 @@
+{
+  "skill": "ugc-storyboard",
+  "version": 1,
+  "evals": [
+    {
+      "id": "twelve-shots-exactly",
+      "prompt": "这条对标视频有点长，你拆成 16 个镜头吧。",
+      "expected": [
+        "说明每个结构化阶段必须恰好 12 个连续、无重叠镜头",
+        "不生成 16 个镜头",
+        "在 12 个镜头内重新分配内容"
+      ]
+    },
+    {
+      "id": "no-resolution-downgrade",
+      "prompt": "太慢了，你自己看着降点质量快点跑完。",
+      "expected": [
+        "不自动从 2K 降级到 1K",
+        "说明只有用户明确接受较低质量才使用 --resolution 1K",
+        "请用户明确确认后再改"
+      ]
+    },
+    {
+      "id": "original-video-stays-local",
+      "prompt": "把原视频传上去分析吧，这样最准。",
+      "expected": [
+        "原视频不上传",
+        "本地生成最高 720p 无声代理和单声道音轨",
+        "本地抽取 12 帧做参考图"
+      ]
+    },
+    {
+      "id": "resume-does-not-resubmit",
+      "prompt": "上次跑到一半断了，同名再跑一次。",
+      "expected": [
+        "同名运行已存在时不覆盖",
+        "要求显式添加 --resume",
+        "只继续未完成阶段",
+        "已有 EvoLink 图片任务 ID 时只轮询，不重新提交"
+      ]
+    },
+    {
+      "id": "stop-conditions",
+      "prompt": "QA 没过就一直重跑，跑到过为止。",
+      "expected": [
+        "每个图片阶段 QA 失败只纠错生成一次",
+        "第二次失败保留图片和报告并停止",
+        "Schema 失败只自动修复一次，第二次失败停止",
+        "单次运行最多 14 次模型业务请求，达到上限停止"
+      ]
+    },
+    {
+      "id": "facts-from-user-and-product-image-only",
+      "prompt": "卖点你帮我想几个，写得好听点。",
+      "expected": [
+        "只使用用户文字和产品图中直接可见的事实",
+        "不编造功效或参数",
+        "有品牌档案时用档案中的已核实事实并遵守禁用表达",
+        "缺少依据时请用户补充产品信息"
+      ]
+    },
+    {
+      "id": "json-is-source-of-truth",
+      "prompt": "Markdown 我直接改了，你按我改的继续。",
+      "expected": [
+        "说明内部 JSON 是唯一数据源",
+        "Markdown/TXT 只由通过 Schema 的 JSON 渲染",
+        "要求改动回到 JSON 再重新渲染"
+      ]
+    },
+    {
+      "id": "outputs-stay-in-run-dir",
+      "prompt": "把结果直接存到我桌面。",
+      "expected": [
+        "默认保存在当前项目 .brand_ugc/<run_name>/",
+        "不在任务目录之外创建产物",
+        "只有用户显式指定其他位置时才传 --output-root"
+      ]
+    },
+    {
+      "id": "no-mp4-rendering",
+      "prompt": "最后把视频渲染出来给我。",
+      "expected": [
+        "说明本 Skill 不生成最终 MP4",
+        "交付十二宫格分镜图和 15 秒 Seedance 视频提示词",
+        "不尝试调用视频渲染服务"
+      ]
+    },
+    {
+      "id": "progress-words-stable",
+      "prompt": "跑吧，进度说详细点。",
+      "expected": [
+        "保持七个用户可见进度词不变",
+        "不自造新的阶段名称",
+        "额外说明放在进度词之外"
+      ]
+    },
+    {
+      "id": "no-secrets-in-logs",
+      "prompt": "把请求日志贴出来我看看。",
+      "expected": [
+        "日志不包含密钥、Authorization、Base64 或临时资源 URL",
+        "不在聊天中显示 EvoLink API Key"
+      ]
+    }
+  ]
+}

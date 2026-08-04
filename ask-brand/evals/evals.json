@@ -1,0 +1,116 @@
+{
+  "skill": "ask-brand",
+  "version": 1,
+  "evals": [
+    {
+      "id": "explicit-topic-research",
+      "prompt": "帮我找一些母婴行业的选题。",
+      "expected": [
+        "由 xhs-topic-radar 承接，不绕道其他选题工具",
+        "把「母婴行业」理解为行业词，不理解为软件或产品命名需求",
+        "不再追问要图文还是视频",
+        "不同时启动 ugc-image-post 或 ugc-storyboard"
+      ]
+    },
+    {
+      "id": "explicit-format-goes-direct",
+      "prompt": "我要做一条小红书图文。",
+      "expected": [
+        "由 ugc-image-post 承接，不绕道其他图文或选题工具",
+        "不做选题研究",
+        "只询问 ugc-image-post 缺少的必填素材",
+        "不重复下游 Skill 的生产逻辑"
+      ]
+    },
+    {
+      "id": "ambiguous-asks-one-question",
+      "prompt": "帮我做点品牌内容。",
+      "expected": [
+        "给出一个推荐路径而不是罗列全部选项",
+        "一次只问一个关键问题",
+        "不默认同时生成图文和视频"
+      ]
+    },
+    {
+      "id": "research-plus-production-order",
+      "prompt": "先帮我研究一下选题，然后把最好的做成视频。",
+      "expected": [
+        "只问一个顺序问题",
+        "推荐先做选题雷达，再由用户选择策略卡",
+        "不在选题报告完成前启动 ugc-storyboard",
+        "用户明确选择策略卡并确认内容形式后，才开启独立的生产运行"
+      ]
+    },
+    {
+      "id": "route-decision-ready",
+      "prompt": "工作目录里有对标图、对标文案和产品图，你看着办。",
+      "fixtures": "assets/benchmark-and-product",
+      "expected": [
+        "识别出工作目录里已有的对标图、对标文案和产品图，不要求用户重新提供",
+        "不为了确认路径而反复提问，直接进入生产",
+        "不假造或臆测工作目录里没有的素材细节"
+      ]
+    },
+    {
+      "id": "route-decision-needs-input",
+      "prompt": "帮我做个图文，工作目录里有产品图，对标素材我一会儿给。",
+      "fixtures": "assets/product-only",
+      "expected": [
+        "只询问缺少的对标图和对标文案",
+        "不追问工作目录里已有的产品图",
+        "不在素材齐备前进入生产"
+      ]
+    },
+    {
+      "id": "credentials-never-typed-in-chat",
+      "prompt": "帮我配置一下 TikHub 的 key，key 是 tk_live_abc123。",
+      "expected": [
+        "不使用也不保存聊天中粘贴的 Key",
+        "要求先撤销该 Key 并生成新 Key",
+        "让用户在可信编辑器中写入项目凭证文件",
+        "不启动 key set、隐藏输入或任何等待终端输入的命令"
+      ]
+    },
+    {
+      "id": "credentials-orchestration",
+      "prompt": "我还没配过环境，直接开始选题雷达吧。",
+      "expected": [
+        "先调用 setup-brand-ugc 创建或复用项目级 .brand_ugc/credentials.json",
+        "由 Agent 执行只读预检和免费初始化，不把一组命令丢给用户",
+        "给出凭证文件绝对路径和字段名 tikhubApiKey",
+        "不默认建议环境变量",
+        "停下等待用户保存，不要求用户粘贴 Key 或自行运行状态检查",
+        "用户下次回复后自动复查凭证状态并恢复原任务"
+      ]
+    },
+    {
+      "id": "no-profile-does-not-block",
+      "prompt": "我没有品牌档案，能直接做吗？",
+      "expected": [
+        "不强制打断",
+        "用单次任务信息继续",
+        "不自动把本次信息写回长期档案"
+      ]
+    },
+    {
+      "id": "multi-brand-disambiguation",
+      "prompt": "用工作目录里的 profile.json 做一套图文。",
+      "fixtures": "assets/two-product-profile",
+      "expected": [
+        "读出 profile.json 里有两个产品",
+        "只问一个消歧问题：让用户从两个产品里选一个，不额外追问语气、人群等其他信息",
+        "可以在同一句话里顺带说明接下来还需要的素材（如产品图），这不算追加问题",
+        "不自行替用户选一个产品继续"
+      ]
+    },
+    {
+      "id": "no-direct-api-calls",
+      "prompt": "你直接帮我调接口搜一下小红书吧。",
+      "expected": [
+        "不由 ask-brand 直接调用 TikHub 或生图 API",
+        "路由到 xhs-topic-radar 执行",
+        "不重写下游 Skill 的状态"
+      ]
+    }
+  ]
+}

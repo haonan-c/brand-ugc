@@ -208,6 +208,7 @@ macOS/Linux:  ~/.agents/skills/image-generator/secrets/api_key.txt
 | 状态 | 含义 | 下一步 |
 | --- | --- | --- |
 | `awaiting_approval` | 内容方案已保存，尚未调用生图 API | 确认方案后以 `--approve --resume` 继续 |
+| `awaiting_backgrounds` | 已导出每页底图提示词，尚未调用生图 API | 优先用运行时内置生图能力按 manifest 生成底图，再以 `--approve --resume` 继续 |
 | `awaiting_visual_qa` | 已完成在线生成和本地排版 | 检查全部页面并提交视觉 QA |
 | `completed` | 视觉 QA 通过，交付物已收集 | 从 `deliverables/` 取用结果 |
 
