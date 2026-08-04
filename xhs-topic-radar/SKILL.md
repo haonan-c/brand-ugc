@@ -14,7 +14,7 @@ Use this Skill for topic discovery and evidence-backed planning. It does not pub
 - Never ask the user to paste a real key into chat, logs, screenshots, or command-line arguments. If one is exposed there, do not use it; require revocation and a fresh key.
 - State is local to `<brand-workspace>/.brand_ugc/topic-radar/`.
 
-Resolve every relative path in this file against this Skill directory. The CLI is:
+Run every command below from this Skill's own directory; all relative paths (`scripts/…`, `references/…`, `schemas/…`) resolve against it. The CLI is:
 
 ```bash
 node scripts/topic_radar.mjs <command> --workspace "/absolute/brand/workspace"
@@ -37,7 +37,13 @@ Software-copyright industries keep the 4/3/3 audience quotas for students, high-
 
 ### 2. Configure the TikHub key safely
 
-First run `key status` yourself with the brand workspace. Credential precedence is `TIKHUB_API_KEY`, project-local `.brand_ugc/credentials.json`, then the legacy user-level credential file:
+First run `key status` yourself with the brand workspace. TikHub key resolution order:
+
+1. `TIKHUB_API_KEY`
+2. `tikhubApiKey` in the project's `.brand_ugc/credentials.json`
+3. legacy user-level `${XDG_CONFIG_HOME:-~/.config}/pi-xhs-topic-radar/credentials.json`
+
+Environment variables serve as a temporary override.
 
 ```bash
 node scripts/topic_radar.mjs key status --workspace "/absolute/brand/workspace"

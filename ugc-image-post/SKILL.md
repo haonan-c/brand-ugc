@@ -3,48 +3,45 @@ name: ugc-image-post
 description: Analyze one benchmark image post and its copy, then create a branded Xiaohongshu-style multi-image publishable candidate from product assets and optional brand profile. Use when Codex needs 对标图文分析、结构级创意迁移、小红书封面与内页组图、产品图锁定、中文确定性排版、标题正文生成、图文视觉QA或继续中断的图文任务。
 ---
 
-# UGC 图文生成
+# UGC Image Post
 
-把一组有顺序的对标图片、对标文案和产品图转换为品牌专属的图文候选稿。默认生成
-六张 3:4 图片、三个标题候选、正文、话题标签、整组预览和 QA 报告。
+Run every command below from this Skill's own directory; all relative paths (`scripts/…`, `references/…`, `schemas/…`) resolve against it.
 
-## 运行条件
+Turn an ordered set of benchmark images, benchmark copy, and product images into a brand-specific image-post candidate. By default it produces six 3:4 images, three title candidates, body copy, hashtags, a full-set preview, and a QA report.
 
-- Python 3.10 或更高版本
-- ImageMagick 的 `magick` 命令
-- `image-generator` 与 `ugc-storyboard` Skill
-- 在线生成时配置 EvoLink API Key
-- 支持中文的 Noto Sans CJK SC、苹方或微软雅黑字体
+## Runtime requirements
 
-## 输入边界
+- Python 3.10 or newer
+- ImageMagick's `magick` command
+- The `image-generator` and `ugc-storyboard` Skills
+- An EvoLink API key for online generation
+- A CJK-capable font: Noto Sans CJK SC, PingFang, or Microsoft YaHei
 
-- 对标图片：必填，1–9 张本地文件，保持原顺序。
-- 对标文案：必填，本地文本文件。
-- 产品图：必填，至少一张清晰图片；透明背景 PNG 的合成效果最佳。
-- 品牌档案：选填，来自 `brand-profile`。
-- v1 每次只分析一个对标笔记，不抓取平台链接，不融合多个笔记。
+## Input boundaries
 
-只迁移钩子、叙事、页面功能、信息层级和视觉规律。重写全部文案，不复制平台 UI、
-头像、水印、原作者人物、商标、插画或高度识别性的设计。
+- Benchmark images: required, 1–9 local files, kept in original order.
+- Benchmark copy: required, a local text file.
+- Product images: required, at least one clear image; a transparent-background PNG composites best.
+- Brand profile: optional, from `brand-profile`.
+- v1 analyzes exactly one benchmark note per run; it does not scrape platform links and does not blend multiple notes.
 
-## 1. 生成内容方案
+Transfer only the hook, narrative, page function, information hierarchy, and visual patterns. Rewrite all copy; do not copy platform UI, avatars, watermarks, the original creator's likeness, trademarks, illustrations, or highly recognizable designs.
 
-按顺序检查对标图片和文案，读取 `references/content-plan-contract.md`，再按照
-`schemas/content-plan.schema.json` 写入内容方案。
+## 1. Generate the content plan
 
-- 默认六页；用户可以指定 4–9 页。
-- 恰好生成三个标题候选，只选择一个进入视觉生产。
-- 每项事实记录来源和证据。
-- 品牌档案决定表达；对标内容只提供方法。
-- 品牌档案同目录存在 `insights.json` 时，封面钩子必须来自其中的人群痛点或内容
-  支柱，并写入 `hook_basis`；洞察里沉淀过 `language_bank.hook_patterns` 时，封面
-  第一句还要复用其中一条句式，并写入 `hook_pattern_used`。
-- 真实产品合成使用 `real_composite`；只有必须交互时使用 `ai_interaction`。
-- 版式只能从 `references/layouts.md` 的受控组件中选择。
+Review the benchmark images and copy in order, read `references/content-plan-contract.md`, then write the content plan per `schemas/content-plan.schema.json`.
 
-建议把草案保存到 `.brand_ugc/drafts/<run-name>/content-plan.json`。
+- Six pages by default; the user may specify 4–9.
+- Produce exactly three title candidates; only one advances into visual production.
+- Record a source and evidence for each fact.
+- The brand profile decides the wording; benchmark content provides method only.
+- When `insights.json` exists in the brand-profile directory, the cover hook must come from its audience pain points or content pillars and be written into `hook_basis`; when the insights have accumulated `language_bank.hook_patterns`, the cover's first line must also reuse one of those patterns and be written into `hook_pattern_used`.
+- Use `real_composite` for real product compositing; use `ai_interaction` only when interaction is unavoidable.
+- Layouts may be chosen only from the controlled components in `references/layouts.md`.
 
-## 2. 固化输入并等待确认
+Save the draft to `.brand_ugc/drafts/<run-name>/content-plan.json` is recommended.
+
+## 2. Freeze inputs and wait for confirmation
 
 ```bash
 python3 scripts/run_pipeline.py \
@@ -59,79 +56,72 @@ python3 scripts/run_pipeline.py \
   --resolution "2K"
 ```
 
-没有品牌档案时省略对应参数。首次运行输出 `awaiting_approval`，只保存输入和
-`outputs/内容方案.md`，不调用生图 API。向用户展示方案并等待确认。
+Omit the matching argument when there is no brand profile. The first run outputs `awaiting_approval`, saves only the inputs and `outputs/内容方案.md`, and calls no image-generation API. Show the plan to the user and wait for confirmation.
 
-## 3. 生成底图
+## 3. Generate base images
 
-底图的生成顺序是：**运行时内置生图能力优先，缺失的页才降级到 EvoLink API。**
+Base-image generation order is: **the runtime's built-in image generation first; only pages it misses fall back to the EvoLink API.**
 
-### 3.1 导出每页提示词
+### 3.1 Export per-page prompts
 
-确认方案后，先用相同参数加上：
+After the plan is confirmed, use the same arguments plus:
 
 ```text
 --approve --resume --stage-prompts
 ```
 
-输出 `awaiting_backgrounds`，并写出 `state/background_manifest.json`。它列出每页的
-`prompt_file`、`output`、`product_mode` 和 `reference_image`。这一步不调用任何生图接口。
+This outputs `awaiting_backgrounds` and writes `state/background_manifest.json`, which lists each page's `prompt_file`, `output`, `product_mode`, and `reference_image`. This step calls no image-generation interface.
 
-### 3.2 优先用运行时内置生图
+### 3.2 Prefer the runtime's built-in image generation
 
-当前运行时提供内置生图工具（例如 Codex 的 `image_gen`）时，按 manifest 逐页生成：
+When the current runtime provides a built-in image tool (e.g. Codex's `image_gen`), generate page by page from the manifest:
 
-- 使用 `prompt_file` 中的完整提示词，不要自行改写。
-- 比例 3:4，尺寸不低于 manifest 的 `canvas`。
-- `product_mode` 为 `ai_interaction` 的页把 `reference_image` 作为参考图传入。
-- 把结果保存为该页 `output` 指定的绝对路径，文件名必须是 `image-01.png`。
+- Use the complete prompt in `prompt_file`; do not rewrite it.
+- Aspect ratio 3:4, size no smaller than the manifest's `canvas`.
+- For pages whose `product_mode` is `ai_interaction`, pass `reference_image` as the reference.
+- Save the result to the absolute path given by that page's `output`; the filename must be `image-01.png`.
 
-运行时没有内置生图能力，或某几页生成失败时，直接跳过这些页即可。
+When the runtime has no built-in image generation, or some pages fail, simply skip those pages.
 
-### 3.3 生成并排版
+### 3.3 Generate and lay out
 
-使用第 2 步的参数，再添加：
+Use the step 2 arguments plus:
 
 ```text
 --approve --resume
 ```
 
-管线自动识别已存在的底图并跳过；只有缺失的页会调用 `image-generator` 与 EvoLink。
-内置生成的页在 `state/request_budget.json` 中记为 `source: runtime_image_gen`，不占用
-EvoLink 请求预算。跳过 3.1 和 3.2 直接执行本步时，全部页面走 API，与旧行为一致。
+The pipeline detects existing base images and skips them; only missing pages call `image-generator` and EvoLink. Pages produced by the built-in tool are recorded as `source: runtime_image_gen` in `state/request_budget.json` and do not consume the EvoLink request budget. Skipping 3.1 and 3.2 and running this step directly sends all pages through the API, matching the old behavior.
 
-- 在线生图只创建无字底图；真实产品像素由本地 SVG 排版合成。
-- `ai_interaction` 页面把产品图作为生图参考，并要求严格视觉 QA。
-- 中文、Logo 和营销文字不交给生图模型绘制。
-- 2K 是默认值；只有用户明确接受时才传 `--resolution 1K`。
-- 每页基础生成一次；全组最多追加两次页面纠错，同一页最多纠错一次。
-- 恢复任务复用已存在的图片和任务目录，不重复提交。
+- Online generation only creates text-free base images; the real product pixels are composited by local SVG layout.
+- `ai_interaction` pages use the product image as a generation reference and require strict visual QA.
+- Chinese text, logos, and marketing copy are not drawn by the image model.
+- 2K is the default; pass `--resolution 1K` only when the user explicitly accepts it.
+- Generate once per page baseline; the full set allows at most two page corrections, and any single page at most one.
+- Recovery reuses existing images and the task directory; it does not resubmit.
 
-开发和演示时可传 `--offline`，使用本地对标图作为底图，不调用付费 API。
+For development and demos, pass `--offline` to use the local benchmark images as base images and call no paid API.
 
-## 4. 视觉 QA
+## 4. Visual QA
 
-在线生成返回 `awaiting_visual_qa` 后，读取
-`references/visual-qa-contract.md`，检查所有页面并写出符合
-`schemas/visual-qa.schema.json` 的报告。
+After online generation returns `awaiting_visual_qa`, read `references/visual-qa-contract.md`, check all pages, and write a report conforming to `schemas/visual-qa.schema.json`.
 
-重新运行并添加：
+Re-run with:
 
 ```text
 --visual-qa-file "/absolute/path/visual-qa.json" --approve --resume
 ```
 
-失败报告最多触发两页纠错，纠错图仍需再次审核。通过报告才把在线任务标记为
-`completed`。三页及以上存在重大问题时停止自动纠错。
+A failing report triggers at most two page corrections, and a corrected image still needs re-review. Only a passing report marks the online task `completed`. Stop auto-correction when three or more pages have major issues.
 
-## 最终交付
+## Final deliverables
 
-面向用户的文件位于 `.brand_ugc/<run-name>/deliverables/`：
+The user-facing files live in `.brand_ugc/<run-name>/deliverables/`:
 
-- `page-01.png` 至最后一页
+- `page-01.png` through the last page
 - `整组预览.png`
 - `发布文案.md`
 - `图文内容.json`
 - `QA报告.json`
 
-最终回复直接显示整组预览，并给出发布文案与交付目录。不要自动发布到平台。
+The final reply shows the full-set preview directly and gives the publish copy and the deliverables directory. Do not publish to any platform automatically.

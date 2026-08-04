@@ -3,48 +3,50 @@ name: setup-brand-ugc
 description: Check local dependencies (Python, Node.js, ImageMagick, CJK fonts, FFmpeg/FFprobe), report which brand-ugc Skills are installed, guide first-time EvoLink and TikHub credential setup, and write the brand-ugc guidance block into the project's AGENTS.md or CLAUDE.md. Use when Codex needs to 初始化配置、检查依赖、配置 EvoLink 或 TikHub Key、诊断安装问题、写入项目 AGENTS.md 引导，或帮助第一次使用的用户完成 brand-ugc 首次设置。
 ---
 
-# brand-ugc 初始化设置
+# brand-ugc First-Time Setup
 
-引导用户完成安装后的首次环境检查和凭证配置，不做内容生产、不调用付费 API。
+Run every command below from this Skill's own directory; all relative paths (`scripts/…`) resolve against it.
 
-## 核心规则
+Guide the user through the first post-install environment check and credential configuration. Do no content production and call no paid API.
 
-- 一次只问一个问题；先确定用户要用哪些路径，再只检查和引导该路径需要的依赖与凭证。
-- 这是 Agent 主导的初始化流程：主动执行只读检查和无需凭证、无需付费的配置，不要只报告步骤或连续粘贴命令让用户自行收尾。
-- 从不要求用户把真实 API Key 粘贴进聊天记录、命令参数或 Agent 可读取的输入；默认由用户在可信编辑器中填写项目凭证文件。
-- 缺失的系统依赖只报告和给出安装命令，不代为静默安装、不修改系统或安全配置。
-- 已经配置好的凭证不覆盖，除非用户明确要求更换。
-- 创建品牌档案是可选步骤，由用户决定是否现在做；setup 完成不等于已经有品牌档案。
+## Core rules
 
-## 使用流程
+- Ask one question at a time; first decide which paths the user needs, then check and guide only the dependencies and credentials that path requires.
+- This is an Agent-led initialization flow: actively run the read-only checks and any credential-free, cost-free configuration; do not merely report steps or paste a chain of commands for the user to finish alone.
+- Never ask the user to paste a real API key into the chat, a command-line argument, or any input the Agent can read; by default the user fills the project credential file in a trusted editor.
+- For missing system dependencies, only report them and give the install command; do not silently install on the user's behalf and do not modify system or security settings.
+- Do not overwrite already-configured credentials unless the user explicitly asks to replace them.
+- Creating a brand profile is optional and up to the user; finishing setup does not mean a brand profile exists.
 
-### 1. 选择目标路径
+## Workflow
 
-先问一个问题：这次准备用图文、短视频、选题雷达，还是全部？回答决定后续只检查相关依赖，不用为不需要的路径找麻烦。
+### 1. Choose the target path
 
-| 路径 | 需要的系统依赖 | 需要的凭证 |
+Ask one question first: is this run for image posts, short video, the topic radar, or all of them? The answer scopes the rest so only the relevant dependencies are checked, avoiding trouble over paths that are not needed.
+
+| Path | Required system dependencies | Required credentials |
 | --- | --- | --- |
-| 图文 (`ugc-image-post`) | ImageMagick、中文字体 | EvoLink |
-| 短视频 (`ugc-storyboard`) | FFmpeg、FFprobe | EvoLink |
-| 选题雷达 (`xhs-topic-radar`) | Node.js `>=22.5.0` | TikHub |
+| Image post (`ugc-image-post`) | ImageMagick, CJK font | EvoLink |
+| Short video (`ugc-storyboard`) | FFmpeg, FFprobe | EvoLink |
+| Topic radar (`xhs-topic-radar`) | Node.js `>=22.5.0` | TikHub |
 
-### 2. 检查依赖与安装状态
+### 2. Check dependencies and install status
 
-先由 Agent 初始化项目级凭证模板；命令不会覆盖已有文件：
+First have the Agent initialize the project-level credential template; the command never overwrites an existing file:
 
 ```bash
 python3 scripts/setup_check.py init --project-root "$PWD"
 ```
 
-模板路径固定为 `<项目>/.brand_ugc/credentials.json`，并自动加入项目 `.gitignore`。然后执行检查：
+The template path is fixed at `<project>/.brand_ugc/credentials.json` and is added to the project `.gitignore` automatically. Then run the check:
 
 ```bash
 python3 scripts/setup_check.py check --project-root "$PWD"
 ```
 
-返回 JSON，包含 `python`/`node`/`imagemagick`/`cjk_font`/`ffmpeg`/`ffprobe` 状态、六个 Skill 的安装情况（`skills`）、EvoLink 与 TikHub 凭证状态（`credentials`），以及当前项目已有的品牌档案（`brand_profiles`）。
+It returns JSON containing the status of `python`/`node`/`imagemagick`/`cjk_font`/`ffmpeg`/`ffprobe`, the install status of the six Skills (`skills`), the EvoLink and TikHub credential status (`credentials`), and the brand profiles already present in the project (`brand_profiles`).
 
-只展示用户选定路径相关的缺失项，并给出下方"依赖安装参考"里对应的命令。如果某个 Skill 未安装，提示用户使用 README 中的一键安装命令补齐：
+Show only the missing items relevant to the user's chosen path, with the matching command from "Dependency install reference" below. If a Skill is not installed, tell the user to fill the gap with the one-shot install command from the README:
 
 ```bash
 npx -y skills@latest add haonan-c/brand-ugc \
@@ -52,9 +54,9 @@ npx -y skills@latest add haonan-c/brand-ugc \
   --agent codex --global --yes
 ```
 
-### 3. 配置凭证
+### 3. Configure credentials
 
-默认让用户在可信编辑器中打开 `<项目>/.brand_ugc/credentials.json`，按需填写：
+By default, have the user open `<project>/.brand_ugc/credentials.json` in a trusted editor and fill only what is needed:
 
 ```json
 {
@@ -64,70 +66,85 @@ npx -y skills@latest add haonan-c/brand-ugc \
 }
 ```
 
-用户只需填写本次路径需要的字段。保存后由 Agent 重新运行 `check`，不要要求每次设置环境变量。环境变量仍作为临时覆盖，读取优先级为：环境变量 → 项目凭证文件 → 旧用户级凭证文件。
+The user fills only the fields the current path requires. After saving, the Agent re-runs `check`; do not require the user to set an environment variable each time.
 
-**EvoLink（图文、短视频路径需要）**：填写 `evolinkApiKey`。如果用户不希望把凭证保存在项目中，仍可使用环境变量：
+EvoLink key resolution order:
+
+1. `EVOLINK_API_KEY`
+2. `IMAGEGEN_API_KEY` (legacy compatibility)
+3. `evolinkApiKey` in the project's `.brand_ugc/credentials.json`
+4. legacy `<install>/image-generator/secrets/api_key.txt`
+
+TikHub key resolution order:
+
+1. `TIKHUB_API_KEY`
+2. `tikhubApiKey` in the project's `.brand_ugc/credentials.json`
+3. legacy user-level `${XDG_CONFIG_HOME:-~/.config}/pi-xhs-topic-radar/credentials.json`
+
+Environment variables serve as a temporary override in both chains. The key must be issued by the matching provider; never display or log a real key.
+
+**EvoLink (needed for the image-post and short-video paths)**: fill `evolinkApiKey`. If the user prefers not to store the credential in the project, an environment variable still works:
 
 ```bash
 export EVOLINK_API_KEY="<用户自己的 Key>"
 ```
 
-**TikHub（选题雷达路径需要）**：填写 `tikhubApiKey`。不要由 Agent 启动隐藏输入命令或要求用户去终端输入；应直接提示上面的项目凭证文件绝对路径。
+**TikHub (needed for the topic-radar path)**: fill `tikhubApiKey`. Do not have the Agent start a hidden-input command or ask the user to type into a terminal; point directly to the absolute path of the project credential file above.
 
-用户下一次回复后，由 Agent 自动运行带同一 `--workspace` 的 `key status` 和本 Skill 的 `check`。若 Key 已出现在聊天、日志或截图中，必须先撤销并生成新 Key，不能写入项目文件。
+On the user's next message, the Agent re-runs `key status` with the same `--workspace` and this Skill's `check`. If a key has appeared in chat, logs, or a screenshot, it must be revoked and regenerated first and must not be written to the project file.
 
-### 4. 写入项目引导文档
+### 4. Write the project guidance doc
 
-把 brand-ugc 的使用引导写进项目的 `AGENTS.md`，并让 `CLAUDE.md` 指向它，让之后的新会话不用重新解释这套 Skills。先预览：
+Write the brand-ugc usage guidance into the project's `AGENTS.md` and point `CLAUDE.md` at it, so later sessions need not re-explain these Skills. Preview first:
 
 ```bash
 python3 scripts/setup_check.py agents-doc --project-root "$PWD" --dry-run
 ```
 
-把 `block` 与 `pointer_block` 展示给用户并征得同意后再写入（这会在用户项目里创建或修改文件）：
+Show `block` and `pointer_block` to the user and, after consent, write them (this creates or modifies files in the user's project):
 
 ```bash
 python3 scripts/setup_check.py agents-doc --project-root "$PWD"
 ```
 
-写入位置是固定的，不用问用户选哪个文件：
+The write locations are fixed, so do not ask the user which file:
 
-- `AGENTS.md` 承载完整引导，文件不存在就创建。
-- `CLAUDE.md` 只放一个指向 `AGENTS.md` 的 `@AGENTS.md` 导入块，文件不存在也一并创建，让 Claude Code 读到同一份引导而不是两份各自维护的副本。
+- `AGENTS.md` carries the full guidance; it is created if absent.
+- `CLAUDE.md` holds only an `@AGENTS.md` import block pointing at `AGENTS.md`, created if absent, so Claude Code reads one shared guidance instead of two separately maintained copies.
 
-两个文件里的区块都由 `<!-- brand-ugc:start -->` / `<!-- brand-ugc:end -->` 包裹，重复运行只更新区块内部，不动用户自己写的其他章节；内容没变化时对应文件返回 `action: "unchanged"` 且不写盘。用户想改措辞时直接改文件里的区块即可，但下次运行本步骤会被覆盖。
+The blocks in both files are wrapped by `<!-- brand-ugc:start -->` / `<!-- brand-ugc:end -->`; a repeat run updates only the block interior and leaves the user's other sections untouched. When nothing changed, the corresponding file returns `action: "unchanged"` and is not written. If the user wants different wording, they edit the block in the file directly, but the next run of this step will overwrite it.
 
-### 5. 可选：创建第一个品牌档案
+### 5. Optional: create the first brand profile
 
-如果 `brand_profiles` 为空，问用户是否现在创建。愿意的话交给 `$brand-profile` 完成，不在这个 Skill 里重复品牌档案的字段逻辑。不愿意也可以跳过，任务内提供的品牌信息可以作为临时上下文。
+If `brand_profiles` is empty, ask whether to create one now. If yes, hand off to `$brand-profile`; do not duplicate the brand-profile field logic in this Skill. If no, skip it — brand info provided within a task can serve as temporary context.
 
-创建完成后可以重跑一次第 4 步，让引导里的品牌档案列表保持最新。
+After creating one, this step's step 4 can be re-run so the brand-profile list in the guidance stays current.
 
-### 6. 总结
+### 6. Summary
 
-由 Agent 再次运行 `check` 确认状态，用一段简短总结告诉用户：哪些依赖已就绪、哪些凭证已配置、引导写进了哪个文件、接下来将恢复哪个原任务。初始化由上游 Skill 触发时，直接恢复该任务，不要求用户重新选择入口。
+Have the Agent run `check` once more to confirm status, and give a short summary telling the user: which dependencies are ready, which credentials are configured, which file the guidance was written to, and which original task will resume next. When initialization was triggered by an upstream Skill, resume that task directly instead of asking the user to re-select an entry point.
 
-## 依赖安装参考
+## Dependency install reference
 
-macOS（Homebrew）：
+macOS (Homebrew):
 
 ```bash
 brew install imagemagick ffmpeg
 brew install --cask font-noto-sans-cjk-sc   # 或已安装苹方 / 微软雅黑也可以
 ```
 
-Node.js（选题雷达需要 `>=22.5.0`）：
+Node.js (topic radar requires `>=22.5.0`):
 
 ```bash
 brew install node   # 或使用 nvm install 22
 ```
 
-Linux（Debian/Ubuntu）：
+Linux (Debian/Ubuntu):
 
 ```bash
 sudo apt-get install imagemagick ffmpeg fonts-noto-cjk
 ```
 
-Windows：从官方站点安装 [ImageMagick](https://imagemagick.org/script/download.php#windows)、[FFmpeg](https://www.gyan.dev/ffmpeg/builds/)、[Node.js](https://nodejs.org/) 并确保加入 `PATH`；中文字体通常已自带微软雅黑。
+Windows: install [ImageMagick](https://imagemagick.org/script/download.php#windows), [FFmpeg](https://www.gyan.dev/ffmpeg/builds/), and [Node.js](https://nodejs.org/) from their official sites and make sure they are on `PATH`; a CJK font (Microsoft YaHei) usually ships with the system.
 
-安装完成后建议重启终端或 Codex 会话，再重新运行第 2 步的 `check` 确认。
+After installing, restart the terminal or the Codex session, then re-run the step 2 `check` to confirm.

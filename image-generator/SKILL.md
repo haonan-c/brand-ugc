@@ -3,26 +3,26 @@ name: image-generator
 description: Generate or edit 1K/2K images from prompts, local images, or public image URLs through an image-generation API. The current backend is EvoLink Nano Banana Pro. Use when Codex needs 生图、图生图、图片编辑、gemini-3-pro-image-preview、Nano Banana Pro，或为 ugc-storyboard、ugc-image-post 生成图片并恢复异步任务。
 ---
 
-# 图片生成
+# Image Generation
 
-使用 `gemini-3-pro-image-preview` 创建 EvoLink 异步图片任务，轮询结果并立即
-下载到本地。当前实现使用 EvoLink，并与 `ugc-storyboard`、`ugc-image-post`
-一起安装，共用视频 Skill 中的薄适配器。
+Run every command below from this Skill's own directory; all relative paths (`scripts/…`, `references/…`) resolve against it.
 
-## 配置
+Create EvoLink async image tasks with `gemini-3-pro-image-preview`, poll for the result, and download it locally right away. The current implementation uses EvoLink and installs alongside `ugc-storyboard` and `ugc-image-post`, sharing a thin adapter with the video Skill.
 
-优先读取：
+## Configuration
+
+EvoLink key resolution order:
 
 1. `EVOLINK_API_KEY`
-2. 兼容环境变量 `IMAGEGEN_API_KEY`
-3. 当前项目 `.brand_ugc/credentials.json` 中的 `evolinkApiKey`
-4. 兼容旧配置 `secrets/api_key.txt`
+2. `IMAGEGEN_API_KEY` (legacy compatibility)
+3. `evolinkApiKey` in the project's `.brand_ugc/credentials.json`
+4. legacy `<install>/image-generator/secrets/api_key.txt`
 
-项目凭证模板由 `setup-brand-ugc init` 创建，只需填写一次；环境变量可用于临时覆盖。密钥内容必须由 EvoLink 签发，不要显示或记录真实密钥。
+The project credential template is created by `setup-brand-ugc init` and only needs to be filled once; environment variables act as a temporary override. The key must be issued by EvoLink. Never display or log the real key.
 
-## 运行
+## Run
 
-macOS/Linux：
+macOS/Linux:
 
 ```bash
 python3 scripts/generate_image.py \
@@ -34,18 +34,16 @@ python3 scripts/generate_image.py \
   --output-dir generated-images
 ```
 
-Windows PowerShell 使用同一组参数，并把 `python3` 替换为 `python`。
+Windows PowerShell uses the same arguments; replace `python3` with `python`.
 
-- 固定模型：`gemini-3-pro-image-preview`
-- 支持分辨率：`1K`、`2K`
-- 默认：`2K`
-- 不自动降级
-- 提示词按 EvoLink 2000-token 上限进行保守裁剪
-- 任务 ID 保存在输出目录 `task.json`
-- 重复运行时若已有任务 ID，只轮询和下载，不再次提交
+- Fixed model: `gemini-3-pro-image-preview`
+- Supported resolutions: `1K`, `2K`
+- Default: `2K`
+- No automatic downgrade
+- Prompts are conservatively trimmed to EvoLink's 2000-token limit
+- The task ID is saved to `task.json` in the output directory
+- On a repeat run with an existing task ID, only poll and download; do not resubmit
 
-旧 `--provider nanobanana`、`--image-file`、`--image-url`、`--aspect-ratio`、
-`--resolution` 和 `--output-dir` 参数继续可用。EvoLink 不支持旧 OSS key
-参数；传入 `--osskey` 时明确停止。
+The legacy `--provider nanobanana`, `--image-file`, `--image-url`, `--aspect-ratio`, `--resolution`, and `--output-dir` arguments remain available. EvoLink does not support the old OSS key parameter; stop explicitly if `--osskey` is passed.
 
-详细接口合同见 `references/api.md`。
+See `references/api.md` for the detailed interface contract.

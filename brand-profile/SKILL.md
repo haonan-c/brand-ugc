@@ -3,23 +3,24 @@ name: brand-profile
 description: Create, validate, read, and resolve reusable local profiles for multiple brands and products, and accumulate consumer insights from interviews, local assets, and topic-radar feedback. Use when Codex needs to 建立品牌档案、保存品牌语气和视觉规范、维护已核实产品卖点与证据、管理禁用表达、沉淀人群痛点与真实用户语言、把选题与评论回流到品牌上下文，或为 ugc-storyboard、ugc-image-post 和 ask-brand 提供一次性不写回的品牌上下文。
 ---
 
-# 品牌档案
+# Brand Profile
 
-把品牌、产品事实和营销约束保存在当前项目的 `.brand_ugc/brands/` 中。
+Run every command below from this Skill's own directory; all relative paths (`scripts/…`, `references/…`, `schemas/…`) resolve against it.
 
-## 核心规则
+Store brand facts, product facts, and marketing constraints in the current project's `.brand_ugc/brands/`.
 
-- 支持多个品牌；每个品牌可以包含多个产品。
-- 只把有明确证据的陈述放入 `verified_claims`。
-- 任务覆盖只生成临时上下文，不静默改写长期档案。
-- 保存已存在的档案时必须显式使用 `--replace`。
-- 不显示或保存 API Key、Authorization、Base64 或临时资源 URL。
-- 稳定的品牌事实存 `profile.json`，持续演进的消费者洞察存 `insights.json`。
+## Core rules
 
-完整字段说明见 `references/profile-contract.md`。创建或修改档案时按
-`schemas/brand-profile.schema.json` 组织 JSON。
+- Support multiple brands; each brand can contain multiple products.
+- Put a statement in `verified_claims` only when it has explicit evidence.
+- Task overrides produce temporary context only; they never silently rewrite the long-term profile.
+- Saving over an existing profile requires an explicit `--replace`.
+- Never display or save API keys, Authorization, Base64, or temporary resource URLs.
+- Stable brand facts go in `profile.json`; continuously evolving consumer insights go in `insights.json`.
 
-## 保存档案
+See `references/profile-contract.md` for the full field reference. Organize the JSON per `schemas/brand-profile.schema.json` when creating or modifying a profile.
+
+## Save a profile
 
 ```bash
 python3 scripts/manage_profile.py save \
@@ -27,9 +28,9 @@ python3 scripts/manage_profile.py save \
   --output-root ".brand_ugc"
 ```
 
-明确替换已有档案时添加 `--replace`。
+Add `--replace` when explicitly replacing an existing profile.
 
-## 读取档案
+## Read a profile
 
 ```bash
 python3 scripts/manage_profile.py show \
@@ -37,9 +38,9 @@ python3 scripts/manage_profile.py show \
   --output-root ".brand_ugc"
 ```
 
-## 生成任务上下文
+## Resolve task context
 
-品牌只有一个产品时可省略 `--product-id`；存在多个产品时必须指定。
+When a brand has only one product, `--product-id` may be omitted; when multiple products exist, it is required.
 
 ```bash
 python3 scripts/manage_profile.py resolve \
@@ -49,20 +50,13 @@ python3 scripts/manage_profile.py resolve \
   --output-root ".brand_ugc"
 ```
 
-允许覆盖 `audiences`、`voice`、`visual`、`compliance`、`defaults` 和
-`product`，禁止覆盖品牌或产品 ID。存在 `insights.json` 时，结果附带按当前产品
-过滤后的 `insights`，任务覆盖不能修改它。
+Overriding `audiences`, `voice`, `visual`, `compliance`, `defaults`, and `product` is allowed; overriding the brand or product ID is not. When `insights.json` exists, the result carries an `insights` block filtered to the current product; task overrides cannot modify it.
 
-## 沉淀消费者洞察
+## Accumulate consumer insights
 
-洞察来自三个通道：运营访谈 `interview`、本地素材 `local_asset`、平台回流
-`platform_radar`。三者都先产出补丁，向用户展示将要新增和更新的条目，确认后再
-合并；不自动写回。
+Insights come from three channels: operator interviews `interview`, local assets `local_asset`, and platform feedback `platform_radar`. All three first produce a patch, show the user which entries will be added and updated, and merge only after confirmation; nothing is written back automatically.
 
-按 `schemas/brand-insights-patch.schema.json` 组织补丁，规则见
-`references/insights-contract.md`。运营访谈按 `references/interview-guide.md`
-提问，一次只问一个问题；本地素材按 `references/intake-guide.md` 提炼；平台回流
-由 `xhs-topic-radar` 在报告完成后产出补丁。
+Organize the patch per `schemas/brand-insights-patch.schema.json`; the rules are in `references/insights-contract.md`. Operator interviews follow `references/interview-guide.md`, asking one question at a time; local assets are distilled per `references/intake-guide.md`; platform feedback is produced by `xhs-topic-radar` after its report completes.
 
 ```bash
 python3 scripts/manage_profile.py insights-merge \
@@ -77,14 +71,8 @@ python3 scripts/manage_profile.py insights-show \
   --output-root ".brand_ugc"
 ```
 
-同一条洞察被**不同**观察重复命中会累加 `observed_count` 并提升 `confidence`，
-所以多次合并是预期行为，不是错误；但 `source`、`observed_at` 和 `ref` 完全相同
-的观察只计一次，误跑两次同一份补丁不会抬高置信度。`platform_radar` 反映品类需求
-而非本品牌评价，不能写入
-`differentiation`。回流平台内容时只保留归纳表述和短语级原话，不保存评论原文和
-作者标识。
+When the same insight is hit again by a **different** observation, its `observed_count` increments and its `confidence` rises, so merging multiple times is expected behavior, not an error; but an observation with identical `source`, `observed_at`, and `ref` counts only once, so accidentally running the same patch twice does not inflate confidence. `platform_radar` reflects category demand rather than an assessment of this brand, so it cannot be written into `differentiation`. When feeding platform content back, keep only summarized statements and phrase-level verbatim quotes; do not store raw comment text or author identifiers.
 
-## 给下游 Skill
+## Handing off to downstream Skills
 
-向下游传递 `resolve` 输出或品牌 `profile.json` 的绝对路径。单次任务提供的信息
-优先于档案；未提供的信息保持未核实，不从产品类别或对标内容推断功效。
+Pass the `resolve` output or the absolute path of the brand's `profile.json` downstream. Information provided for a single task takes precedence over the profile; anything not provided stays unverified and is not inferred from product category or benchmark content.
