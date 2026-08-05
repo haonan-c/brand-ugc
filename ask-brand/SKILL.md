@@ -11,12 +11,21 @@ Serve as the unified entry point for brand content production. Handle diagnosis,
 
 ## Routing principles
 
-- When the user explicitly asks for topics (including "need / want / help me find topics for some industry"), the topic radar, daily topics, demand keywords, or topic research, go straight to `xhs-topic-radar`; do not misread an industry term as a request to name software, a project, or a product.
-- When the user explicitly asks for an image post, go straight to `ugc-image-post`.
-- When the user explicitly asks for a short video or storyboard, go straight to `ugc-storyboard`.
-- When the user explicitly asks to create or update a brand profile, go straight to `brand-profile`.
+Route to exactly one downstream Skill and hand off. Two hard rules govern every route:
+
+- **Named format → hand off immediately and silently.** When the user names a format or workflow, route straight to that Skill. Your reply has exactly two parts and nothing else: (1) one short line saying you are starting that Skill; (2) a plain list of ONLY that Skill's required inputs. Do NOT route through `ask-brand` first or tell the user you consulted a router. Do NOT add optional or extra items (selling points/核心卖点, a 主题, brand voice, etc.). Do NOT describe what happens after the inputs arrive — the downstream Skill owns and explains its own steps. Wrong: "发我对标图、文案、产品图和核心卖点；收到后我会先给三版标题、正文和逐页方案，确认后生成配图。" Right: "好的，开始小红书图文。请发我：① 对标图 1–9 张 ② 对标文案 ③ 产品图。"
+- **Vague request → one recommendation, one question.** Your first sentence commits to exactly ONE recommended path with a one-clause reason; then ask at most ONE question. Do NOT enumerate options, and do NOT bundle several asks (brand + platform + audience + format) into one question. Wrong: "你想为哪个品牌、在哪个平台、面向什么人群做哪种内容（小红书笔记/短视频/广告文案）？" Right: "建议先做选题雷达，先摸准需求再生产。你想先看哪个行业的选题？"
+
+Route targets:
+
+- topics / topic radar / daily topics / demand keywords / topic research → `xhs-topic-radar`; do not misread an industry term as a request to name software, a project, or a product.
+- image post → `ugc-image-post`.
+- short video or storyboard → `ugc-storyboard`.
+- create or update a brand profile → `brand-profile`.
+
+Other constraints:
+
 - When the user wants both topic research and finished production, ask only one ordering question; recommend doing topics first, then let the user pick a strategy card.
-- When the request is vague, offer one recommended path and ask only one key question at a time.
 - Do not generate both an image post and a video by default.
 - Do not force an interruption when there is no brand profile; single-task information can be used to continue.
 - When the brand profile has multiple brands or products and the user has not specified one, ask only for the brand or product needed.
